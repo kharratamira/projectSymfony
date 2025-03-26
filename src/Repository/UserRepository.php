@@ -2,24 +2,28 @@
 
 namespace App\Repository;
 
-use App\Entity\CompteClient;
 use App\Entity\User;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use App\Entity\Technicien;
+use App\Entity\CompteClient;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
 /**
  * @extends ServiceEntityRepository<User>
  */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
-{
-    public function __construct(ManagerRegistry $registry)
-    {
-        parent::__construct($registry, User::class);
-    }
+{private EntityManagerInterface $entityManager;
 
+    public function __construct(ManagerRegistry $registry, EntityManagerInterface $entityManager)
+    {
+        parent::__construct($registry, user::class);
+        $this->entityManager = $entityManager;
+    }
+    
     /**
      * Used to upgrade (rehash) the user's password automatically over time.
      */
@@ -44,7 +48,57 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getQuery()
             ->getOneOrNullResult();
     }
+//     public function findUsersByRoles(array $roles): array
+// {
+//     return $this->createQueryBuilder('u')
+//         ->innerJoin('u.role', 'r')
+//         ->where('r.nom_role IN (:roles)')
+//         ->setParameter('roles', $roles)
+//         ->orderBy('u.id', 'desc')
+//         ->getQuery()
+//         ->getResult();
+// }
+public function findUsersByRoles(array $roles): array
+{
+    return $this->createQueryBuilder('u')
+        ->innerJoin('u.role', 'r')
+        ->where('r.nom_role IN (:roles)')
+        ->setParameter('roles', $roles)
+        ->orderBy('u.id', 'desc')
+        ->getQuery()
+        ->getResult();
+}
+public function updateTechnicien(Technicien $updatedTechnicien): void
+{
+    // Find the existing Technicien entity by ID
+    $technicien = $this->find($updatedTechnicien->getId());
 
+    // Check if the entity is found
+    if ($technicien) {
+        // Update fields
+        $technicien->setNom($updatedTechnicien->getNom());
+        $technicien->setPrenom($updatedTechnicien->getPrenom());
+        $technicien->setEmail($updatedTechnicien->getEmail());
+        $technicien->setNumTel($updatedTechnicien->getNumTel());
+        $technicien->setDisponibilite($updatedTechnicien->isDisponibilite());
+        $technicien->setSpecialite($updatedTechnicien->getSpecialite());
+
+        // Flush the changes to the database
+        $this->entityManager->flush();
+    }
+}
+public function deleteTechnicien(int $id): void
+    {
+        // Find the existing Technicien entity by ID
+        $technicien = $this->find($id);
+
+        // Check if the entity is found
+        if ($technicien) {
+            // Remove the entity from the database
+            $this->entityManager->remove($technicien);
+            $this->entityManager->flush();
+        }
+    }
 //    /**
 //     * @return CompteClient[] Returns an array of CompteClient objects
 //     */

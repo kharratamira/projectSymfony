@@ -9,6 +9,7 @@ use App\Entity\Client;
 use App\Entity\Commercial;
 use App\Entity\Technicien;
 use App\Repository\RoleRepository;
+use App\Repository\UserRepository;
 use App\Repository\ClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -98,8 +99,9 @@ final class AuthController extends AbstractController
         UserPasswordHasherInterface $passwordHasher,
         RoleRepository $roleRepo
     ): JsonResponse {
+        try {
         // if (!$this->isGranted('ROLE_ADMIN')) {
-        //     return new JsonResponse(['message' => 'Access denied'], 403);
+        //     return new JsonResponse(['message' => 'Accès refusé'], 403);
         // }
         $data = json_decode($request->getContent(), true);
 
@@ -107,7 +109,7 @@ final class AuthController extends AbstractController
         $userType = $data['user_type'] ?? null;
 
         if (!$userType) {
-            return new JsonResponse(['message' => 'User type is required'], 400);
+            return new JsonResponse(['message' => 'Le type d\'utilisateur est requis'], 400);
         }
 
         // Instanciation selon le type demandé
@@ -136,7 +138,8 @@ final class AuthController extends AbstractController
         $user->setPrenom($data['prenom'] ?? '');
         $user->setEmail($data['email'] ?? '');
         $user->setNumTel($data['numTel'] ?? '');
-        
+        $user->setDateCreation(new \DateTime());
+        dump($user);
         // Gestion du mot de passe hashé
         $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
         $user->setPassword($hashedPassword);
@@ -146,7 +149,7 @@ final class AuthController extends AbstractController
         $role = $roleRepo->findOneBy(['nom_role' => 'ROLE_' . $roleName]);
 
         if (!$role) {
-            return new JsonResponse(['message' => 'Role not found in DB'], 400);
+            return new JsonResponse(['message' => 'Rôle non trouvé dans la base de données'], 400);
         }
 
         $user->setRole($role);
@@ -156,6 +159,91 @@ final class AuthController extends AbstractController
         $entityManager->flush();
 
         return new JsonResponse(['message' => 'Utilisateur créé avec succès'], 201);
+    } catch (\Exception $e) {
+        return new JsonResponse(['message' => 'Une erreur est survenue', 'details' => $e->getMessage()], 500);
     }
+    }
+    #[Route('/getTechnicien', name: 'api_get_users', methods: ['GET'])]
+public function getUsers(UserRepository $userRepository): JsonResponse
+{
+    // Récupérer les utilisateurs ayant le rôle TECHNICIEN
+    $roles = ['ROLE_TECHNICIEN'];
+    $users = $userRepository->findUsersByRoles($roles);
+
+    // Formater la réponse
+    $userList = array_map(function($user) {
+        $userData = [
+            'id' => $user->getId(),
+            'nom' => $user->getNom(),
+            'prenom' => $user->getPrenom(),
+            'email' => $user->getEmail(),
+            'numTel' => $user->getNumTel(),
+            'user_type' => $user instanceof Technicien ? 'TECHNICIEN' : 'UNKNOWN',
+            'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s')
+        ];
+
+        // Ajouter les champs spécifiques aux techniciens
+        if ($user instanceof Technicien) {
+            $userData['disponibilite'] = $user->isDisponibilite();
+            $userData['specialite'] = $user->getSpecialite();
+        }
+
+        return $userData;
+    }, $users);
+
+    return new JsonResponse($userList, 200);
 }
+
+#[Route('/updateTechnicien/{id}', name: 'api_update_technicien', methods: ['PUT'])]
+public function updateTechnicien(int $id, Request $request, UserRepository $userRepository, UserPasswordHasherInterface $passwordHasher): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
+
+    // Find the existing Technicien entity by ID
+    $technicien = $userRepository->find($id);
+
+    if (!$technicien) {
+        return new JsonResponse(['message' => 'Technicien non trouvé'], 404);
+    }
+
+    // Update fields
+    if (isset($data['nom'])) {
+        $technicien->setNom($data['nom']);
+    }
+    if (isset($data['prenom'])) {
+        $technicien->setPrenom($data['prenom']);
+    }
+    if (isset($data['email'])) {
+        $technicien->setEmail($data['email']);
+    }
+    if (isset($data['numTel'])) {
+        $technicien->setNumTel($data['numTel']);
+    }
+    if (isset($data['disponibilite'])) {
+        $technicien->setDisponibilite($data['disponibilite']);
+    }
+    if (isset($data['specialite'])) {
+        $technicien->setSpecialite($data['specialite']);
+    }
+    if (isset($data['password'])) {
+        $hashedPassword = $passwordHasher->hashPassword($technicien, $data['password']);
+        $technicien->setPassword($hashedPassword);
+    }
+
+    // Save the changes
+    $userRepository->updateTechnicien($technicien);
+
+    return new JsonResponse(['message' => 'Technicien mis à jour avec succès'], 200);
+}
+
+#[Route('/deleteTechnicien/{id}', name: 'api_delete_technicien', methods: ['DELETE'])]
+public function deleteTechnicien(int $id, UserRepository $userRepository): JsonResponse
+{
+    // Utiliser la méthode deleteTechnicien du UserRepository
+    $userRepository->deleteTechnicien($id);
+
+    return new JsonResponse(['message' => 'Technicien supprimé avec succès'], 200);
+}
+}
+
 
