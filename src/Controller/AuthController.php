@@ -16,9 +16,11 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\String\Slugger\SluggerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[Route('/api')]
@@ -34,84 +36,156 @@ final class AuthController extends AbstractController
     }
 
     #[Route('/signup_client', name: 'api_signup_client', methods: ['POST'])]
+public function signup(Request $request, ClientRepository $clientRepository, ValidatorInterface $validator, SluggerInterface $slugger): JsonResponse
+{
+    // Récupérer les données du formulaire
+    $data = $request->request->all();
+    $photoFile = $request->files->get('photo');
+
+    // Vérifier les champs requis
+    $requiredFields = ['email', 'password', 'nom', 'prenom', 'adresse', 'numTel', 'entreprise'];
+    $missingFields = [];
     
-    public function signup(Request $request, ClientRepository $clientRepository, ValidatorInterface $validator): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-
-        // Vérifier les champs requis
-        if (!isset($data['email'], $data['password'], $data['nom'], $data['prenom'], $data['adresse'], $data['numTel'], $data['entreprise'])) {
-            return $this->json(['error' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
+    foreach ($requiredFields as $field) {
+        if (!isset($data[$field]) || empty(trim($data[$field]))) {
+            $missingFields[] = $field;
         }
-
-        // Vérifier si l'email existe déjà
-        $existingClient = $clientRepository->findOneBy(['email' => $data['email']]);
-        if ($existingClient) {
-            return $this->json(['error' => 'Email already exists'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Création d'un nouveau client
-        $client = new Client();
-        $client->setEmail($data['email']);
-        $client->setPassword($this->passwordEncoder->hashPassword($client, $data['password']));
-        $client->setNom($data['nom']);
-        $client->setPrenom($data['prenom']);
-        $client->setAdresse($data['adresse']);
-        $client->setNumTel($data['numTel']??null);
-        $client->setEntreprise($data['entreprise']);
-        $client->setDateCreation(new \DateTime());
-
-        
-        // Vérifier si le rôle 'ROLE_CLIENT' existe
-        $roleClient = $this->entityManager->getRepository(Role::class)->findOneBy(['nom_role' => 'ROLE_CLIENT']);
-        if (!$roleClient) {
-            return $this->json(['error' => 'Role ROLE_CLIENT not found'], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-        
-        // Ajouter le rôle au client
-        $client->setRole($roleClient);
-
-        // Validation des données
-        $errors = $validator->validate($client);
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[] = $error->getMessage();
-            }
-            return $this->json(['errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Enregistrer le client en base de données
-        try {
-            $this->entityManager->persist($client);
-            $this->entityManager->flush();
-        } catch (\Exception $e) {
-            return $this->json(['error' => 'An error occurred while saving the client', 'details' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
-        return $this->json(['message' => 'Client registered successfully'], Response::HTTP_CREATED);
     }
+    
+    if (!empty($missingFields)) {
+        return $this->json([
+            'error' => 'Champs requis manquants',
+            'missing_fields' => $missingFields
+        ], Response::HTTP_BAD_REQUEST);
+    }
+
+    // Vérifier si l'email existe déjà
+    $existingClient = $clientRepository->findOneBy(['email' => $data['email']]);
+    if ($existingClient) {
+        return $this->json([
+            'error' => 'Cet email est déjà utilisé'
+        ], Response::HTTP_BAD_REQUEST);
+    }
+
+    // Création d'un nouveau client
+    $client = new Client();
+    $client->setEmail($data['email']);
+    $client->setPassword($this->passwordEncoder->hashPassword($client, $data['password']));
+    $client->setNom($data['nom']);
+    $client->setPrenom($data['prenom']);
+    $client->setAdresse($data['adresse']);
+    $client->setNumTel($data['numTel']);
+    $client->setEntreprise($data['entreprise']);
+    $client->setDateCreation(new \DateTime());
+
+    // Gestion du rôle CLIENT
+    $roleClient = $this->entityManager->getRepository(Role::class)->findOneBy(['nom_role' => 'ROLE_CLIENT']);
+    if (!$roleClient) {
+        return $this->json([
+            'error' => 'Erreur de configuration du rôle'
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+    $client->setRole($roleClient);
+
+    // Traitement de la photo si elle est fournie
+    if ($photoFile) {
+        // Validation du type de fichier
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        $mimeType = $photoFile->getMimeType();
+        
+        if (!in_array($mimeType, $allowedMimeTypes)) {
+            return $this->json([
+                'error' => 'Type de fichier non supporté (seuls JPEG, PNG et GIF sont acceptés)'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Validation de la taille (max 2MB)
+        if ($photoFile->getSize() > 2 * 1024 * 1024) {
+            return $this->json([
+                'error' => 'La taille de l\'image ne doit pas dépasser 2MB'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Génération d'un nom de fichier unique
+        $originalFilename = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = $slugger->slug($originalFilename);
+        $newFilename = $safeFilename.'-'.uniqid().'.'.$photoFile->guessExtension();
+
+        // Déplacement du fichier
+        try {
+            $photoFile->move(
+                $this->getParameter('user_photos_directory'),
+                $newFilename
+            );
+            $client->setPhoto($newFilename);
+        } catch (FileException $e) {
+            return $this->json([
+                'error' => 'Erreur lors de l\'enregistrement de l\'image'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Validation des données
+    $errors = $validator->validate($client);
+    if (count($errors) > 0) {
+        $errorMessages = [];
+        foreach ($errors as $error) {
+            $errorMessages[$error->getPropertyPath()] = $error->getMessage();
+        }
+        
+        return $this->json([
+            'error' => 'Validation failed',
+            'errors' => $errorMessages
+        ], Response::HTTP_BAD_REQUEST);
+    }
+
+    // Enregistrement en base de données
+    try {
+        $this->entityManager->persist($client);
+        $this->entityManager->flush();
+    } catch (\Exception $e) {
+        return $this->json([
+            'error' => 'Erreur lors de l\'enregistrement',
+            'details' => $e->getMessage()
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+
+    return $this->json([
+        'message' => 'Client enregistré avec succès',
+        'client_id' => $client->getId()
+    ], Response::HTTP_CREATED);
+}
+    
     #[Route('/signup', name: 'api_signup', methods: ['POST'])]
    // #[IsGranted('ROLE_ADMIN')]
     public function sigupUser(
         Request $request,
         EntityManagerInterface $entityManager,
         UserPasswordHasherInterface $passwordHasher,
-        RoleRepository $roleRepo
+        RoleRepository $roleRepo,
+        SluggerInterface $slugger
     ): JsonResponse {
         try {
         // if (!$this->isGranted('ROLE_ADMIN')) {
         //     return new JsonResponse(['message' => 'Accès refusé'], 403);
         // }
         $data = json_decode($request->getContent(), true);
-
+        if (!$data) {
+            return new JsonResponse(['message' => 'Données JSON invalides'], 400);
+        }
         // On récupère le type d'utilisateur
         $userType = $data['user_type'] ?? null;
 
         if (!$userType) {
             return new JsonResponse(['message' => 'Le type d\'utilisateur est requis'], 400);
         }
-
+        $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email'] ?? '']);
+        if ($existingUser) {
+            return new JsonResponse(['message' => 'Email déjà utilisé'], 400);
+        }
+        if (!isset($data['password']) || strlen($data['password']) < 8) {
+            return new JsonResponse(['message' => 'Le mot de passe doit contenir au moins 8 caractères'], 400);
+        }
         // Instanciation selon le type demandé
         switch (strtolower($userType)) {
             case 'technicien':
@@ -153,8 +227,30 @@ final class AuthController extends AbstractController
         }
 
         $user->setRole($role);
-
-        // On sauvegarde !
+        // Gestion de la photo
+        if (isset($data['photo']) && !empty($data['photo'])) {
+            $photoData = base64_decode($data['photo'], true);
+            
+            // Vérifier si le décodage a échoué
+            if ($photoData === false) {
+                return new JsonResponse(['message' => 'Données de l\'image invalides'], 400);
+            }
+        
+            // Vérifier si c'est une image valide
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->buffer($photoData);
+        
+            if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
+                return new JsonResponse(['message' => 'Format d\'image non valide'], 400);
+            }
+        
+            $photoFilename = $slugger->slug($user->getNom()) . '-' . uniqid() . '.jpg';
+            $photoPath = $this->getParameter('user_photos_directory') . '/' . $photoFilename;
+            file_put_contents($photoPath, $photoData);
+            $user->setPhoto($photoFilename);
+        }
+        
+                // On sauvegarde !
         $entityManager->persist($user);
         $entityManager->flush();
 
@@ -164,7 +260,7 @@ final class AuthController extends AbstractController
     }
     }
     #[Route('/getTechnicien', name: 'api_get_users', methods: ['GET'])]
-public function getUsers(UserRepository $userRepository): JsonResponse
+public function getTechnicien(UserRepository $userRepository): JsonResponse
 {
     // Récupérer les utilisateurs ayant le rôle TECHNICIEN
     $roles = ['ROLE_TECHNICIEN'];
@@ -179,6 +275,7 @@ public function getUsers(UserRepository $userRepository): JsonResponse
             'email' => $user->getEmail(),
             'numTel' => $user->getNumTel(),
             'user_type' => $user instanceof Technicien ? 'TECHNICIEN' : 'UNKNOWN',
+            'photo'=> $user->getPhoto(),
             'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s')
         ];
 
@@ -229,6 +326,9 @@ public function updateTechnicien(int $id, Request $request, UserRepository $user
         $hashedPassword = $passwordHasher->hashPassword($technicien, $data['password']);
         $technicien->setPassword($hashedPassword);
     }
+    if (isset($data['photo'])) {
+        $technicien->setPhoto($data['photo']);
+    }
 
     // Save the changes
     $userRepository->updateTechnicien($technicien);
@@ -244,6 +344,89 @@ public function deleteTechnicien(int $id, UserRepository $userRepository): JsonR
 
     return new JsonResponse(['message' => 'Technicien supprimé avec succès'], 200);
 }
+#[Route('/getCommercial', name: 'api_get_technicien', methods: ['GET'])]
+public function getCommercial(UserRepository $userRepository): JsonResponse
+{
+    // Récupérer les utilisateurs ayant le rôle TECHNICIEN
+    $roles = ['ROLE_COMMERCIAL'];
+    $users = $userRepository->findUsersByRoles($roles);
+
+    // Formater la réponse
+    $userList = array_map(function($user) {
+        $userData = [
+            'id' => $user->getId(),
+            'nom' => $user->getNom(),
+            'prenom' => $user->getPrenom(),
+            'email' => $user->getEmail(),
+            'numTel' => $user->getNumTel(),
+            'user_type' => $user instanceof Commercial ? 'COMMERCIAL' : 'UNKNOWN',
+            'photo'=> $user->getPhoto(),
+            'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s')
+        ];
+
+        // Ajouter les champs spécifiques aux techniciens
+        if ($user instanceof Commercial) {
+            $userData['region'] = $user->getRegion();
+           
+        }
+
+        return $userData;
+    }, $users);
+
+    return new JsonResponse($userList, 200);
+}
+#[Route('/updateCommercial/{id}', name: 'api_update_Commercial', methods: ['PUT'])]
+public function updateCommercial(int $id, Request $request, UserRepository $userRepository, UserPasswordHasherInterface $passwordHasher): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
+
+    // Find the existing Technicien entity by ID
+    $commercila = $userRepository->find($id);
+
+    if (!$commercila) {
+        return new JsonResponse(['message' => 'Commercial non trouvé'], 404);
+    }
+
+    // Update fields
+    if (isset($data['nom'])) {
+        $commercila->setNom($data['nom']);
+    }
+    if (isset($data['prenom'])) {
+        $commercila->setPrenom($data['prenom']);
+    }
+    if (isset($data['email'])) {
+        $commercila->setEmail($data['email']);
+    }
+    if (isset($data['numTel'])) {
+        $commercila->setNumTel($data['numTel']);
+    }
+    if (isset($data['region'])) {
+        $commercila->setRegion($data['region']);
+    }
+    if (isset($data['photo'])) {
+        $commercila->setPhoto($data['photo']);
+    }
+    if (isset($data['password'])) {
+        $hashedPassword = $passwordHasher->hashPassword($commercila, $data['password']);
+        $commercila->setPassword($hashedPassword);
+    }
+   
+
+    // Save the changes
+    $userRepository->updateCommercial($commercila);
+
+    return new JsonResponse(['message' => 'Commercial mis à jour avec succès'], 200);
+}
+
+#[Route('/deleteCommercial/{id}', name: 'api_delete_commercial', methods: ['DELETE'])]
+public function deleteCommercial(int $id, UserRepository $userRepository): JsonResponse
+{
+    // Utiliser la méthode deleteTechnicien du UserRepository
+    $userRepository->deleteCommercial($id);
+
+    return new JsonResponse(['message' => 'Commercial supprimé avec succès'], 200);
+}
+
 }
 
 

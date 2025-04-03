@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Commercial;
 use App\Entity\User;
 use App\Entity\Technicien;
 use App\Entity\CompteClient;
@@ -82,6 +83,7 @@ public function updateTechnicien(Technicien $updatedTechnicien): void
         $technicien->setNumTel($updatedTechnicien->getNumTel());
         $technicien->setDisponibilite($updatedTechnicien->isDisponibilite());
         $technicien->setSpecialite($updatedTechnicien->getSpecialite());
+        $technicien->setPhoto($updatedTechnicien->getPhoto());
 
         // Flush the changes to the database
         $this->entityManager->flush();
@@ -99,6 +101,39 @@ public function deleteTechnicien(int $id): void
             $this->entityManager->flush();
         }
     }
+
+    public function updateCommercial(Commercial $updatedCommercial): void
+{
+    // Find the existing Technicien entity by ID
+    $commercial = $this->find($updatedCommercial->getId());
+
+    // Check if the entity is found
+    if ($commercial) {
+        // Update fields
+        $commercial->setNom($updatedCommercial->getNom());
+        $commercial->setPrenom($updatedCommercial->getPrenom());
+        $commercial->setEmail($updatedCommercial->getEmail());
+        $commercial->setNumTel($updatedCommercial->getNumTel());
+        $commercial->setRegion($updatedCommercial->getRegion());
+        $commercial->setPhoto($updatedCommercial->getPhoto());
+        
+        // Flush the changes to the database
+        $this->entityManager->flush();
+    }
+}
+public function deleteCommercial(int $id): void
+    {
+        // Find the existing Technicien entity by ID
+        $commercial = $this->find($id);
+
+        // Check if the entity is found
+        if ($commercial) {
+            // Remove the entity from the database
+            $this->entityManager->remove($commercial);
+            $this->entityManager->flush();
+        }
+    }
+
 //    /**
 //     * @return CompteClient[] Returns an array of CompteClient objects
 //     */
