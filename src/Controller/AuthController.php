@@ -246,15 +246,32 @@ public function signup(Request $request, ClientRepository $clientRepository, Val
         
             $photoFilename = $slugger->slug($user->getNom()) . '-' . uniqid() . '.jpg';
             $photoPath = $this->getParameter('user_photos_directory') . '/' . $photoFilename;
-            file_put_contents($photoPath, $photoData);
+            if (file_put_contents($photoPath, $photoData) === false) {
+                return new JsonResponse(['message' => 'Erreur lors de l\'enregistrement de la photo'], 500);
+            }
+
             $user->setPhoto($photoFilename);
         }
         
                 // On sauvegarde !
         $entityManager->persist($user);
         $entityManager->flush();
-
-        return new JsonResponse(['message' => 'Utilisateur créé avec succès'], 201);
+        $photoUrl = null;
+        if ($user->getPhoto()) {
+            $photoUrl = $request->getSchemeAndHttpHost() . '/uploads/users/' . $user->getPhoto();
+        }
+        return new JsonResponse([
+            'message' => 'Utilisateur créé avec succès',
+            'user' => [
+                'id' => $user->getId(),
+                'nom' => $user->getNom(),
+                'prenom' => $user->getPrenom(),
+                'email' => $user->getEmail(),
+                'role' => $user->getRole(),
+                'photo' => $photoUrl,
+            ]
+        ], 201);
+       // return new JsonResponse(['message' => 'Utilisateur créé avec succès'], 201);
     } catch (\Exception $e) {
         return new JsonResponse(['message' => 'Une erreur est survenue', 'details' => $e->getMessage()], 500);
     }

@@ -68,7 +68,8 @@ public function login(Request $request): JsonResponse
             'id' => $client->getId(),
             'email' => $client->getEmail(),
             'nom'=>$client->getNom(),
-            'prenom'=>$client->getPrenom()
+            'prenom'=>$client->getPrenom(),
+            'photo' => $client->getPhoto()
         ],
         'roles' => $client->getRoles()
     ]);
