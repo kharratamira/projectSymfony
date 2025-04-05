@@ -24,9 +24,16 @@ class Role
     #[ORM\OneToMany(mappedBy: 'role', targetEntity: User::class)]
     private Collection $users;
 
+    /**
+     * @var Collection<int, Premission>
+     */
+    #[ORM\ManyToMany(targetEntity: Premission::class, mappedBy: 'roles')]
+    private Collection $premissions;
+
     public function __construct()
     {
         $this->users = new ArrayCollection();
+        $this->premissions = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -68,6 +75,33 @@ class Role
         if ($this->users->removeElement($user)) {
             $user->setRole(null);
         }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Premission>
+     */
+    public function getPremissions(): Collection
+    {
+        return $this->premissions;
+    }
+
+    public function addPremission(Premission $premission): static
+    {
+        if (!$this->premissions->contains($premission)) {
+            $this->premissions->add($premission);
+            $premission->addRole($this);
+        }
+
+        return $this;
+    }
+
+    public function removePremission(Premission $premission): static
+    {
+        if ($this->premissions->removeElement($premission)) {
+            $premission->removeRole($this);
+        }
+
         return $this;
     }
 }
