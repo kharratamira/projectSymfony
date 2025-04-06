@@ -213,6 +213,7 @@ public function deleteClient(DemandeInterventionRepository $demandeInterventionR
         return $this->json(['message' => 'An error occurred during the deletion process'], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
+
 #[Route('/acceptDemande/{id}', name: 'api_acceptDemande', methods: ['PUT'], requirements: ['id' => '\d+'])]
 public function acceptDemande(int $id, EntityManagerInterface $em): JsonResponse
 {

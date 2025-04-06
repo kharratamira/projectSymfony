@@ -51,9 +51,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 255)]
     private ?string $photo = null;
+
+    /**
+     * @var Collection<int, Notification>
+     */
+    #[ORM\OneToMany(targetEntity: Notification::class, mappedBy: 'users')]
+    private Collection $notifications;
     public function __construct()
     {
         $this->dateCreation = new \DateTime();
+        $this->notifications = new ArrayCollection();
     }
 
     /**
@@ -197,6 +204,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPhoto(string $photo): static
     {
         $this->photo = $photo;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): static
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setUsers($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): static
+    {
+        if ($this->notifications->removeElement($notification)) {
+            // set the owning side to null (unless already changed)
+            if ($notification->getUsers() === $this) {
+                $notification->setUsers(null);
+            }
+        }
 
         return $this;
     }}
