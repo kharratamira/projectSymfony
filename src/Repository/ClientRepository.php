@@ -28,7 +28,7 @@ class ClientRepository extends ServiceEntityRepository
     public function findAllClientWithDemande(): array
     {
         return $this->createQueryBuilder('c')
-        ->select('c.id, c.nom, c.prenom, c.numTel, c.email, c.entreprise, c.adresse')
+        ->select('c.id, c.nom, c.prenom, c.numTel, c.email, c.entreprise, c.adresse, c.isActive')
         ->distinct()
         ->getQuery()
         ->getArrayResult();

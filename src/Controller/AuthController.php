@@ -293,7 +293,8 @@ public function getTechnicien(UserRepository $userRepository): JsonResponse
             'numTel' => $user->getNumTel(),
             'user_type' => $user instanceof Technicien ? 'TECHNICIEN' : 'UNKNOWN',
             'photo'=> $user->getPhoto(),
-            'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s')
+            'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s'),
+            'isActive' => $user->isActive(),
         ];
 
         // Ajouter les champs spécifiques aux techniciens
@@ -353,13 +354,42 @@ public function updateTechnicien(int $id, Request $request, UserRepository $user
     return new JsonResponse(['message' => 'Technicien mis à jour avec succès'], 200);
 }
 
-#[Route('/deleteTechnicien/{id}', name: 'api_delete_technicien', methods: ['DELETE'])]
-public function deleteTechnicien(int $id, UserRepository $userRepository): JsonResponse
-{
-    // Utiliser la méthode deleteTechnicien du UserRepository
-    $userRepository->deleteTechnicien($id);
 
-    return new JsonResponse(['message' => 'Technicien supprimé avec succès'], 200);
+#[Route('/desactiveTechnicien/{id}', name: 'api_delete_technicien', methods: ['DELETE'])]
+public function deleteTechnicien(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
+{
+    // Trouver le technicien par son ID
+    $technicien = $userRepository->find($id);
+
+    if (!$technicien) {
+        return new JsonResponse(['message' => 'Technicien non trouvé'], 404);
+    }
+
+    // Désactiver le compte
+    $technicien->setIsActive(false);
+
+    // Sauvegarder les modifications
+    $em->persist($technicien);
+    $em->flush();
+
+    return new JsonResponse(['message' => 'Compte technicien désactivé avec succès'], 200);
+}
+
+#[Route('/activateTechnicien/{id}', name: 'api_activate_technicien', methods: ['PUT'])]
+public function activateTechnicien(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
+{
+    $technicien = $userRepository->find($id);
+
+    if (!$technicien) {
+        return new JsonResponse(['message' => 'Technicien non trouvé'], 404);
+    }
+
+    $technicien->setIsActive(true);
+
+    $em->persist($technicien);
+    $em->flush();
+
+    return new JsonResponse(['message' => 'Compte technicien réactivé avec succès'], 200);
 }
 #[Route('/getCommercial', name: 'api_get_technicien', methods: ['GET'])]
 public function getCommercial(UserRepository $userRepository): JsonResponse
@@ -378,7 +408,8 @@ public function getCommercial(UserRepository $userRepository): JsonResponse
             'numTel' => $user->getNumTel(),
             'user_type' => $user instanceof Commercial ? 'COMMERCIAL' : 'UNKNOWN',
             'photo'=> $user->getPhoto(),
-            'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s')
+            'date_creation' => $user->getDateCreation()->format('Y-m-d H:i:s'),
+            'isActive' => $user->isActive(),
         ];
 
         // Ajouter les champs spécifiques aux techniciens
@@ -435,14 +466,14 @@ public function updateCommercial(int $id, Request $request, UserRepository $user
     return new JsonResponse(['message' => 'Commercial mis à jour avec succès'], 200);
 }
 
-#[Route('/deleteCommercial/{id}', name: 'api_delete_commercial', methods: ['DELETE'])]
-public function deleteCommercial(int $id, UserRepository $userRepository): JsonResponse
-{
-    // Utiliser la méthode deleteTechnicien du UserRepository
-    $userRepository->deleteCommercial($id);
+// #[Route('/deleteCommercial/{id}', name: 'api_delete_commercial', methods: ['DELETE'])]
+// public function deleteCommercial(int $id, UserRepository $userRepository): JsonResponse
+// {
+//     // Utiliser la méthode deleteTechnicien du UserRepository
+//     $userRepository->deleteCommercial($id);
 
-    return new JsonResponse(['message' => 'Commercial supprimé avec succès'], 200);
-}
+//     return new JsonResponse(['message' => 'Commercial supprimé avec succès'], 200);
+// }
 
 }
 

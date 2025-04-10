@@ -57,6 +57,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\OneToMany(targetEntity: Notification::class, mappedBy: 'users')]
     private Collection $notifications;
+
+    #[ORM\Column]
+    private ?bool $isActive = null;
     public function __construct()
     {
         $this->dateCreation = new \DateTime();
@@ -234,6 +237,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $notification->setUsers(null);
             }
         }
+
+        return $this;
+    }
+
+    public function isActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
 
         return $this;
     }}
