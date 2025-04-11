@@ -30,8 +30,12 @@ class DemandeIntervention
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dateDemande = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface $actionDate = null;
+
     public function __construct()
     {
+        $this->actionDate = new \DateTime(); // Date actuelle
         $this->dateDemande = new \DateTime(); // Date actuelle
         $this->statut = StatutDemande::EN_ATTENTE; // Statut par défaut
     }
@@ -96,6 +100,18 @@ class DemandeIntervention
     public function setDateDemande(\DateTimeInterface $dateDemande): static
     {
         $this->dateDemande = $dateDemande;
+
+        return $this;
+    }
+
+    public function getActionDate(): ?\DateTimeInterface
+    {
+        return $this->actionDate;
+    }
+
+    public function setActionDate(\DateTimeInterface $actionDate): static
+    {
+        $this->actionDate = $actionDate;
 
         return $this;
     }

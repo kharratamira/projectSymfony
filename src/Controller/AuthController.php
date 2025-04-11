@@ -77,6 +77,7 @@ public function signup(Request $request, ClientRepository $clientRepository, Val
     $client->setNumTel($data['numTel']);
     $client->setEntreprise($data['entreprise']);
     $client->setDateCreation(new \DateTime());
+    $client->setIsActive(true); // Définit isActive à true par défaut
 
     // Gestion du rôle CLIENT
     $roleClient = $this->entityManager->getRepository(Role::class)->findOneBy(['nom_role' => 'ROLE_CLIENT']);
@@ -107,17 +108,17 @@ public function signup(Request $request, ClientRepository $clientRepository, Val
         }
 
         // Génération d'un nom de fichier unique
-        $originalFilename = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $safeFilename = $slugger->slug($originalFilename);
-        $newFilename = $safeFilename.'-'.uniqid().'.'.$photoFile->guessExtension();
+        $originalname = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $Filename = $slugger->slug($originalname);
+        $newName = $Filename.'-'.uniqid().'.'.$photoFile->guessExtension();
 
         // Déplacement du fichier
         try {
             $photoFile->move(
                 $this->getParameter('user_photos_directory'),
-                $newFilename
+                $newName
             );
-            $client->setPhoto($newFilename);
+            $client->setPhoto($newName);
         } catch (FileException $e) {
             return $this->json([
                 'error' => 'Erreur lors de l\'enregistrement de l\'image'
@@ -213,6 +214,8 @@ public function signup(Request $request, ClientRepository $clientRepository, Val
         $user->setEmail($data['email'] ?? '');
         $user->setNumTel($data['numTel'] ?? '');
         $user->setDateCreation(new \DateTime());
+        $user->setIsActive(true); // Définit isActive à true par défaut
+
         dump($user);
         // Gestion du mot de passe hashé
         $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
@@ -269,6 +272,8 @@ public function signup(Request $request, ClientRepository $clientRepository, Val
                 'email' => $user->getEmail(),
                 'role' => $user->getRole(),
                 'photo' => $photoUrl,
+                'isActive' => $user->isActive(),
+
             ]
         ], 201);
        // return new JsonResponse(['message' => 'Utilisateur créé avec succès'], 201);
@@ -355,7 +360,7 @@ public function updateTechnicien(int $id, Request $request, UserRepository $user
 }
 
 
-#[Route('/desactiveTechnicien/{id}', name: 'api_delete_technicien', methods: ['DELETE'])]
+#[Route('/desactiveUser/{id}', name: 'api_delete_technicien', methods: ['DELETE'])]
 public function deleteTechnicien(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
 {
     // Trouver le technicien par son ID
@@ -375,7 +380,7 @@ public function deleteTechnicien(int $id, UserRepository $userRepository, Entity
     return new JsonResponse(['message' => 'Compte technicien désactivé avec succès'], 200);
 }
 
-#[Route('/activateTechnicien/{id}', name: 'api_activate_technicien', methods: ['PUT'])]
+#[Route('/activateUser/{id}', name: 'api_activate_technicien', methods: ['PUT'])]
 public function activateTechnicien(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
 {
     $technicien = $userRepository->find($id);

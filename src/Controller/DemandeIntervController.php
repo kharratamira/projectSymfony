@@ -51,10 +51,6 @@ final class DemandeIntervController extends AbstractController{
     
         // Récupérer le client existant
          $client = $clientRepository->findOneBy(['email' => $data['email']]);
-        // if (!$client) {
-        //     return $this->json(['message' => 'Client non trouvé. Veuillez vous inscrire d\'abord.'], 404);
-        // }
-    
         // Enregistrer la demande
         $em->beginTransaction();
         try {
@@ -62,6 +58,7 @@ final class DemandeIntervController extends AbstractController{
             $demande->setDescription($data['description'])
                     ->setStatut($statut)
                     ->setDateDemande(new \DateTime())
+                    ->setActionDate(new \DateTime())
                     ->setClient($client);
     
             $em->persist($demande);
@@ -90,21 +87,16 @@ final class DemandeIntervController extends AbstractController{
         foreach ($demandes as $demande) {
             $demandeData[] = [
                 'id' => $demande->getId(),
-                //'nomSociete' => $demande->getNomSociete(),
                 'description' => $demande->getDescription(),
                 'statut' => $demande->getStatut(),// Enum value as string
                  
                 'client' => [
                     'id' => $demande->getClient()->getId(),
-                    // 'prenom' => $demande->getClient()->getPrenom(),
-                    // 'email' => $demande->getClient()->getEmail(),
                     'adresse'=>$demande->getClient()->getAdresse(),
                     'entreprise'=>$demande->getClient()->getEntreprise(),
-                    // 'numeroTelephone' =>$demande->getClient()->getNumeroTelephone(),
-                    
-                    // Add other client details if needed
                 ],
-                'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s')
+                'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
+                'actionDate' => $demande->getActionDate()->format('Y-m-d H:i:s'),
             ];
         }
 
@@ -121,17 +113,17 @@ final class DemandeIntervController extends AbstractController{
         $data = json_decode($request->getContent(), true);
     
         // Check if the required fields are present
-        $donnes = [ 'description', 'statut'];
-        foreach ($donnes as $donne) {
-            if (!isset($data[$donne])) {
-                return $this->json(['message' => "Le champ '$donne' est requis."], 400);
+        $demandes= [ 'description', ];
+        foreach ($demandes as $demande) {
+            if (!isset($data[$demande])) {
+                return $this->json(['message' => "Le champ '$demande' est requis."], 400);
             }
         }
     
         // Retrieve the DemandeIntervention entity by ID
         $demande = $this->demandeRepository->find($demandeId);
         if (!$demande) {
-            return $this->json(['message' => 'Demande not found.'], 404);
+            return $this->json(['message' => 'Demande non trouver.'], 404);
         }
         if (isset($data['description'])) {
             $demande->setDescription($data['description']);
@@ -139,16 +131,16 @@ final class DemandeIntervController extends AbstractController{
         
     
         // Handle the statut update (ensure valid values)
-        if (isset($data['statut'])) {
-            try {
-                $statut = StatutDemande::from($data['statut']); // Assuming StatutDemande is an enum
-                $demande->setStatut($statut);
-            } catch (\ValueError $e) {
-                return new JsonResponse([
-                    'error' => 'Statut invalide. Les valeurs autorisées sont : ' . implode(', ', StatutDemande::getValues())
-                ], JsonResponse::HTTP_BAD_REQUEST);
-            }
-        }
+        // if (isset($data['statut'])) {
+        //     try {
+        //         $statut = StatutDemande::from($data['statut']); // Assuming StatutDemande is an enum
+        //         $demande->setStatut($statut);
+        //     } catch (\ValueError $e) {
+        //         return new JsonResponse([
+        //             'error' => 'Statut invalide. Les valeurs autorisées sont : ' . implode(', ', StatutDemande::getValues())
+        //         ], JsonResponse::HTTP_BAD_REQUEST);
+        //     }
+        // }
     
         // Optionally update associated client data
         if (isset($data['client'])) {
@@ -181,13 +173,14 @@ final class DemandeIntervController extends AbstractController{
                 'demande' => [
                     'id' => $demande->getId(),
                     'description' => $demande->getDescription(),
-                    'statut' => $demande->getStatut()->value, // Accéder à la valeur de l'énumération
+                    //'statut' => $demande->getStatut()->value, // Accéder à la valeur de l'énumération
                     'client' => [
                         'id' => $demande->getClient()->getId(),
                         'entreprise' => $demande->getClient()->getEntreprise(),
                         'adresse' => $demande->getClient()->getAdresse(),
                     ],
-                    'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s')
+                    'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
+                    'actionDate' => $demande->getActionDate() ? $demande->getActionDate()->format('Y-m-d H:i:s') : null,
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -228,6 +221,7 @@ public function acceptDemande(int $id, EntityManagerInterface $em): JsonResponse
     try {
         $statut = StatutDemande::Accepter; // Replace this with the correct enum value
         $demande->setStatut($statut);
+        $demande->setActionDate(new \DateTime());
 
         $em->persist($demande);
         $em->flush();
@@ -252,6 +246,7 @@ public function cancelDemande(int $id, EntityManagerInterface $em): JsonResponse
     try {
         $statut = StatutDemande::ANNULEE; // Replace this with the correct enum value
         $demande->setStatut($statut);
+        $demande->setActionDate(new \DateTime());
 
         $em->persist($demande);
         $em->flush();
