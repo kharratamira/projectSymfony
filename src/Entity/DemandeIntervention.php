@@ -33,6 +33,15 @@ class DemandeIntervention
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $actionDate = null;
 
+    #[ORM\Column(length: 255,nullable: true)]
+    private ?string $photo1 = null;
+
+    #[ORM\Column(length: 255,nullable: true)]
+    private ?string $photo2 = null;
+
+    #[ORM\Column(length: 255,nullable: true)]
+    private ?string $photo3 = null;
+
     public function __construct()
     {
         $this->actionDate = new \DateTime(); // Date actuelle
@@ -44,17 +53,7 @@ class DemandeIntervention
         return $this->id;
     }
 
-    // public function getNomSociete(): ?string
-    // {
-    //     return $this->nomSociete;
-    // }
-
-    // public function setNomSociete(string $nomSociete): static
-    // {
-    //     $this->nomSociete = $nomSociete;
-
-    //     return $this;
-    // }
+   
 
     public function getDescription(): ?string
     {
@@ -112,6 +111,42 @@ class DemandeIntervention
     public function setActionDate(\DateTimeInterface $actionDate): static
     {
         $this->actionDate = $actionDate;
+
+        return $this;
+    }
+
+    public function getPhoto1(): ?string
+    {
+        return $this->photo1;
+    }
+
+    public function setPhoto1(?string $photo1): static
+    {
+        $this->photo1 = $photo1;
+
+        return $this;
+    }
+
+    public function getPhoto2(): ?string
+    {
+        return $this->photo2;
+    }
+
+    public function setPhoto2(?string $photo2): static
+    {
+        $this->photo2 = $photo2;
+
+        return $this;
+    }
+
+    public function getPhoto3(): ?string
+    {
+        return $this->photo3;
+    }
+
+    public function setPhoto3(?string $photo3): static
+    {
+        $this->photo3 = $photo3;
 
         return $this;
     }

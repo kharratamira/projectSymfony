@@ -33,7 +33,7 @@ final class DemandeIntervController extends AbstractController{
         EntityManagerInterface $em
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
-    
+        $photoFiles = $request->files;
         // Vérifier les champs requis
         $donne = [  'description', 'statut'];
         foreach ($donne as $donnes) {
@@ -51,6 +51,9 @@ final class DemandeIntervController extends AbstractController{
     
         // Récupérer le client existant
          $client = $clientRepository->findOneBy(['email' => $data['email']]);
+         if (!$client) {
+            return $this->json(['message' => 'Client non trouvé.'], 404);
+        }
         // Enregistrer la demande
         $em->beginTransaction();
         try {
@@ -60,16 +63,56 @@ final class DemandeIntervController extends AbstractController{
                     ->setDateDemande(new \DateTime())
                     ->setActionDate(new \DateTime())
                     ->setClient($client);
+                   
     
-            $em->persist($demande);
+        // Gestion des photos
+        
+        for ($i = 1; $i <= 3; $i++) {
+            $photoKey = "photo$i";
+            if ($photoFiles->has($photoKey)) {
+                $photoFile = $photoFiles->get($photoKey);
+        
+                // Validation du type de fichier
+                $allowedMimeTypes = ['image/jpeg', 'image/png'];
+                if (!in_array($photoFile->getMimeType(), $allowedMimeTypes)) {
+                    return $this->json(['message' => "Le fichier $photoKey doit être une image JPEG ou PNG."], 400);
+                }
+        
+                // Génération d'un nom de fichier unique
+                $originalFilename = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
+                $safeFilename = preg_replace('/[^a-zA-Z0-9-_]/', '', $originalFilename);
+                $newFilename = $safeFilename . '-' . uniqid() . '.' . $photoFile->guessExtension();
+        
+                // Déplacement du fichier
+                $photoFile->move(
+                    $this->getParameter('photos_directory'),
+                    $newFilename
+                );
+        
+                // Enregistrer le nom de fichier dans l'attribut correspondant
+                $setter = "setPhoto$i";
+                if (method_exists($demande, $setter)) {
+                    $demande->$setter($newFilename);
+                }
+            } else {
+                // Si aucune photo n'est fournie, définir null
+                $setter = "setPhoto$i";
+                if (method_exists($demande, $setter)) {
+                    $demande->$setter(null);
+                }
+            }
+        }      $em->persist($demande);
             $em->flush();
             $em->commit();
     
             return $this->json(['message' => 'Demande ajoutée avec succès'], 201);
         } catch (\Exception $e) {
             $em->rollback();
-            return $this->json(['message' => 'Une erreur est survenue lors de l\'enregistrement.'], 500);
-        }
+            return $this->json([
+                'message' => 'Une erreur est survenue lors de l\'enregistrement.',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);}
     }
      #[Route('/getDemandes', name: 'api_getDemandes', methods: ['GET'])]
     public function getDemandes(DemandeInterventionRepository $demandeRepository): JsonResponse
@@ -81,6 +124,7 @@ final class DemandeIntervController extends AbstractController{
         if (empty($demandes)) {
             return $this->json(['message' => 'Aucune demande trouvée.'], 404);
         }
+        $baseUrl = $this->getParameter('app.base_url') . '/uploads/demandes/';
 
         // Map the demandes to an array of data
         $demandeData = [];
@@ -97,6 +141,11 @@ final class DemandeIntervController extends AbstractController{
                 ],
                 'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
                 'actionDate' => $demande->getActionDate()->format('Y-m-d H:i:s'),
+                'photos' => [
+                    $demande->getPhoto1() ? $baseUrl . $demande->getPhoto1() : null,
+                    $demande->getPhoto2() ? $baseUrl . $demande->getPhoto2() : null,
+                    $demande->getPhoto3() ? $baseUrl . $demande->getPhoto3() : null,
+                ],
             ];
         }
 

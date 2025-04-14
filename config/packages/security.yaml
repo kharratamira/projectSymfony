@@ -90,6 +90,7 @@ when@test:
                 memory_cost: 10 # Lowest possible value for argon
 parameters:
     user_photos_directory: '%kernel.project_dir%/public/uploads/users'
+    photos_directory: '%kernel.project_dir%/public/uploads/demandes'
     # client_photos_directory: '%kernel.project_dir%/public/uploads/clients'  
 
     app.base_url: 'http://localhost:8000'
