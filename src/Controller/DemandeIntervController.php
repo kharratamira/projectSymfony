@@ -24,96 +24,197 @@ final class DemandeIntervController extends AbstractController{
         $this->demandeRepository = $demandeRepository;
         $this->entityManager = $entityManager;
     }
-    #[Route('/saveDemande', name: 'api_saveDemande', methods: ['POST'])]
-    public function saveDemande(
-        Request $request,
-        DemandeInterventionRepository $demandeRepository,
-        ClientRepository $clientRepository,
+//     #[Route('/saveDemande', name: 'api_saveDemande', methods: ['POST'])]
+//     public function saveDemande(
+//         Request $request,
+//         DemandeInterventionRepository $demandeRepository,
+//         ClientRepository $clientRepository,
         
-        EntityManagerInterface $em
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
-        $photoFiles = $request->files;
-        // Vérifier les champs requis
-        $donne = [  'description', 'statut'];
-        foreach ($donne as $donnes) {
-            if (!isset($data[$donnes])) {
-                return $this->json(['message' => "Le champ '$donnes' est requis."], 400);
-            }
-        }
+//         EntityManagerInterface $em
+//     ): JsonResponse {
+//   $data = $request->request->all();
+//           $photoFiles = $request->files;
+//         // Vérifier les champs requis
+//         $donne = [  'description', 'statut'];
+//         foreach ($donne as $donnes) {
+//             if (!isset($data[$donnes])) {
+//                 return $this->json(['message' => "Le champ '$donnes' est requis."], 400);
+//             }
+//         }
     
-        // Valider le statut
-        try {
-            $statut = StatutDemande::from($data['statut']);
-        } catch (\ValueError $e) {
-            return $this->json(['message' => 'Statut invalide. Les valeurs autorisées sont : ' . implode(', ', StatutDemande::cases())], 400);
-        }
+//         // Valider le statut
+//         try {
+//             $statut = StatutDemande::from($data['statut']);
+//         } catch (\ValueError $e) {
+//             return $this->json(['message' => 'Statut invalide. Les valeurs autorisées sont : ' . implode(', ', StatutDemande::cases())], 400);
+//         }
     
-        // Récupérer le client existant
-         $client = $clientRepository->findOneBy(['email' => $data['email']]);
-         if (!$client) {
-            return $this->json(['message' => 'Client non trouvé.'], 404);
-        }
-        // Enregistrer la demande
-        $em->beginTransaction();
-        try {
-            $demande = new DemandeIntervention();
-            $demande->setDescription($data['description'])
-                    ->setStatut($statut)
-                    ->setDateDemande(new \DateTime())
-                    ->setActionDate(new \DateTime())
-                    ->setClient($client);
+//         // Récupérer le client existant
+//          $client = $clientRepository->findOneBy(['email' => $data['email']]);
+//          if (!$client) {
+//             return $this->json(['message' => 'Client non trouvé.'], 404);
+//         }
+//         // Enregistrer la demande
+//         $em->beginTransaction();
+//         try {
+//             $demande = new DemandeIntervention();
+//             $demande->setDescription($data['description'])
+//                     ->setStatut($statut)
+//                     ->setDateDemande(new \DateTime())
+//                     ->setActionDate(new \DateTime())
+//                     ->setClient($client);
                    
     
-        // Gestion des photos
+//         // Gestion des photos
         
+//         for ($i = 1; $i <= 3; $i++) {
+//             $photoKey = "photo$i";
+//             if ($photoFiles->has($photoKey)) {
+//                 $photoFile = $photoFiles->get($photoKey);
+        
+//                 // Validation du type de fichier
+//                 $allowedMimeTypes = ['image/jpeg', 'image/png'];
+//                 if (!in_array($photoFile->getMimeType(), $allowedMimeTypes)) {
+//                     return $this->json(['message' => "Le fichier $photoKey doit être une image JPEG ou PNG."], 400);
+//                 }
+        
+//                 // Génération d'un nom de fichier unique
+//                 $originalFilename = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
+//                 $safeFilename = preg_replace('/[^a-zA-Z0-9-_]/', '', $originalFilename);
+//                 $newFilename = $safeFilename . '-' . uniqid() . '.' . $photoFile->guessExtension();
+        
+//                 // Déplacement du fichier
+//                 $photoFile->move(
+//                     $this->getParameter('photos_directory'),
+//                     $newFilename
+//                 );
+        
+//                 // Enregistrer le nom de fichier dans l'attribut correspondant
+//                 $setter = "setPhoto$i";
+//                 if (method_exists($demande, $setter)) {
+//                     $demande->$setter($newFilename);
+//                 }
+//             // } else {
+//             //     // Si aucune photo n'est fournie, définir null
+//             //     $setter = "setPhoto$i";
+//             //     if (method_exists($demande, $setter)) {
+//             //         $demande->$setter(null);
+//             //     }
+//             }
+//         }      $em->persist($demande);
+//             $em->flush();
+//             $em->commit();
+    
+//             return $this->json(['message' => 'Demande ajoutée avec succès'], 201);
+//         } catch (\Exception $e) {
+//             $em->rollback();
+//             return $this->json([
+//                 'message' => 'Une erreur est survenue lors de l\'enregistrement.',
+//                 'error' => $e->getMessage(),
+//                 'trace' => $e->getTraceAsString()
+//             ], 500);}
+//     }
+#[Route('/saveDemande', name: 'api_saveDemande', methods: ['POST'])]
+public function saveDemande(
+    Request $request,
+    DemandeInterventionRepository $demandeRepository,
+    ClientRepository $clientRepository,
+    EntityManagerInterface $em
+): JsonResponse {
+    $data = json_decode($request->getContent(), true);
+    
+    // Vérifier les champs requis
+    $donne = ['description', 'statut'];
+    foreach ($donne as $donnes) {
+        if (!isset($data[$donnes])) {
+            return $this->json(['message' => "Le champ '$donnes' est requis."], 400);
+        }
+    }
+
+    // Valider le statut
+    try {
+        $statut = StatutDemande::from($data['statut']);
+    } catch (\ValueError $e) {
+        return $this->json(['message' => 'Statut invalide. Les valeurs autorisées sont : ' . implode(', ', StatutDemande::cases())], 400);
+    }
+
+    // Récupérer le client existant
+    $client = $clientRepository->findOneBy(['email' => $data['email']]);
+    if (!$client) {
+        return $this->json(['message' => 'Client non trouvé.'], 404);
+    }
+
+    // Vérification du répertoire de stockage
+    $uploadDir = $this->getParameter('photos_directory');
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    // Enregistrer la demande
+    $em->beginTransaction();
+    try {
+        $demande = new DemandeIntervention();
+        $demande->setDescription($data['description'])
+                ->setStatut($statut)
+                ->setDateDemande(new \DateTime())
+                ->setActionDate(new \DateTime())
+                ->setClient($client);
+
+        // Gestion des photos en base64
         for ($i = 1; $i <= 3; $i++) {
             $photoKey = "photo$i";
-            if ($photoFiles->has($photoKey)) {
-                $photoFile = $photoFiles->get($photoKey);
-        
-                // Validation du type de fichier
-                $allowedMimeTypes = ['image/jpeg', 'image/png'];
-                if (!in_array($photoFile->getMimeType(), $allowedMimeTypes)) {
-                    return $this->json(['message' => "Le fichier $photoKey doit être une image JPEG ou PNG."], 400);
+            if (isset($data[$photoKey]) && !empty($data[$photoKey])) {
+                $base64Image = $data[$photoKey];
+                
+                // Validation du format base64
+                if (!preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches)) {
+                    return $this->json(['message' => "Le format de la photo $i est invalide."], 400);
                 }
-        
+                
+                $imageType = $matches[1]; // jpg, png, etc.
+                $base64Image = preg_replace('/^data:image\/\w+;base64,/', '', $base64Image);
+                $imageData = base64_decode($base64Image);
+                
+                if ($imageData === false) {
+                    return $this->json(['message' => "Erreur de décodage de la photo $i"], 400);
+                }
+                
+                // Validation du type MIME
+                $allowedTypes = ['jpeg', 'jpg', 'png'];
+                if (!in_array(strtolower($imageType), $allowedTypes)) {
+                    return $this->json(['message' => "La photo $i doit être au format JPEG ou PNG."], 400);
+                }
+                
                 // Génération d'un nom de fichier unique
-                $originalFilename = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $safeFilename = preg_replace('/[^a-zA-Z0-9-_]/', '', $originalFilename);
-                $newFilename = $safeFilename . '-' . uniqid() . '.' . $photoFile->guessExtension();
-        
-                // Déplacement du fichier
-                $photoFile->move(
-                    $this->getParameter('photos_directory'),
-                    $newFilename
-                );
-        
-                // Enregistrer le nom de fichier dans l'attribut correspondant
+                $newFilename = 'demande_' . uniqid() . "_$i." . $imageType;
+                $filePath = $uploadDir . '/' . $newFilename;
+                
+                // Sauvegarde du fichier
+                if (file_put_contents($filePath, $imageData) === false) {
+                    return $this->json(['message' => "Erreur lors de l'enregistrement de la photo $i"], 500);
+                }
+                
+                // Enregistrer le nom de fichier dans l'entité
                 $setter = "setPhoto$i";
                 if (method_exists($demande, $setter)) {
                     $demande->$setter($newFilename);
                 }
-            } else {
-                // Si aucune photo n'est fournie, définir null
-                $setter = "setPhoto$i";
-                if (method_exists($demande, $setter)) {
-                    $demande->$setter(null);
-                }
             }
-        }      $em->persist($demande);
-            $em->flush();
-            $em->commit();
-    
-            return $this->json(['message' => 'Demande ajoutée avec succès'], 201);
-        } catch (\Exception $e) {
-            $em->rollback();
-            return $this->json([
-                'message' => 'Une erreur est survenue lors de l\'enregistrement.',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);}
+        }
+
+        $em->persist($demande);
+        $em->flush();
+        $em->commit();
+
+        return $this->json(['message' => 'Demande ajoutée avec succès'], 201);
+    } catch (\Exception $e) {
+        $em->rollback();
+        return $this->json([
+            'message' => 'Une erreur est survenue lors de l\'enregistrement.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
      #[Route('/getDemandes', name: 'api_getDemandes', methods: ['GET'])]
     public function getDemandes(DemandeInterventionRepository $demandeRepository): JsonResponse
     {
