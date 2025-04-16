@@ -3,6 +3,8 @@
 namespace App\Entity;
 use App\Entity\StatutDemande;
 use App\Repository\DemandeInterventionRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -42,11 +44,20 @@ class DemandeIntervention
     #[ORM\Column(length: 255,nullable: true)]
     private ?string $photo3 = null;
 
+    /**
+     * @var Collection<int, AffecterDemande>
+     */
+   
+     #[ORM\OneToMany(mappedBy: 'demande', targetEntity: AffecterDemande::class, cascade: ['persist', 'remove'])]
+     private Collection $affecterDemandes;
+ 
+
     public function __construct()
     {
         $this->actionDate = new \DateTime(); // Date actuelle
         $this->dateDemande = new \DateTime(); // Date actuelle
         $this->statut = StatutDemande::EN_ATTENTE; // Statut par défaut
+        $this->affecterDemandes = new ArrayCollection();
     }
     public function getId(): ?int
     {
@@ -147,6 +158,36 @@ class DemandeIntervention
     public function setPhoto3(?string $photo3): static
     {
         $this->photo3 = $photo3;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, AffecterDemande>
+     */
+    public function getAffecterDemandes(): Collection
+    {
+        return $this->affecterDemandes;
+    }
+
+    public function addAffecterDemande(AffecterDemande $affecterDemande): static
+    {
+        if (!$this->affecterDemandes->contains($affecterDemande)) {
+            $this->affecterDemandes->add($affecterDemande);
+            $affecterDemande->setDemande($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAffecterDemande(AffecterDemande $affecterDemande): static
+    {
+        if ($this->affecterDemandes->removeElement($affecterDemande)) {
+            // set the owning side to null (unless already changed)
+            if ($affecterDemande->getDemande() === $this) {
+                $affecterDemande->setDemande(null);
+            }
+        }
 
         return $this;
     }

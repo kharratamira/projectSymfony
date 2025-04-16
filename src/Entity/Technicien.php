@@ -17,16 +17,19 @@ class Technicien extends User
     #[ORM\Column(length: 255)]
     private ?string $specialite = null;
 
-    /**
-     * @var Collection<int, Intervention>
-     */
-    #[ORM\ManyToMany(targetEntity: Intervention::class, mappedBy: 'technicien')]
-    private Collection $interventions;
+    
 
+    /**
+     * @var Collection<int, AffecterDemande>
+     */
+    
+     #[ORM\OneToMany(targetEntity: AffecterDemande::class, mappedBy: 'technicien')]
+     private Collection $affectations;
     public function __construct()
     {
         parent::__construct();
-        $this->interventions = new ArrayCollection();
+        
+        $this->affectations = new ArrayCollection();
     }
 
    
@@ -55,28 +58,34 @@ class Technicien extends User
         return $this;
     }
 
+   
+    
+   
     /**
-     * @return Collection<int, Intervention>
+     * @return Collection<int, AffecterDemande>
      */
-    public function getInterventions(): Collection
+    public function getTechnicien(): Collection
     {
-        return $this->interventions;
+        return $this->affectations;
     }
 
-    public function addIntervention(Intervention $intervention): static
+    public function addTechnicien(AffecterDemande $technicien): static
     {
-        if (!$this->interventions->contains($intervention)) {
-            $this->interventions->add($intervention);
-            $intervention->addTechnicien($this);
+        if (!$this->affectations->contains($technicien)) {
+            $this->affectations->add($technicien);
+            $technicien->setTechnicien($this);
         }
 
         return $this;
     }
 
-    public function removeIntervention(Intervention $intervention): static
+    public function removeTechnicien(AffecterDemande $technicien): static
     {
-        if ($this->interventions->removeElement($intervention)) {
-            $intervention->removeTechnicien($this);
+        if ($this->affectations->removeElement($technicien)) {
+            // set the owining side to null (unless already changed)
+            if ($technicien->getTechnicien() === $this) {
+                $technicien->setTechnicien(null);
+            }
         }
 
         return $this;

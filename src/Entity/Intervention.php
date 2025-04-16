@@ -31,18 +31,11 @@ class Intervention
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $date_fin = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
-    private ?demandeIntervention $demande = null;
-
-    /**
-     * @var Collection<int, Technicien>
-     */
-    #[ORM\ManyToMany(targetEntity: Technicien::class, inversedBy: 'interventions')]
-    private Collection $technicien;
+   
 
     public function __construct()
     {
-        $this->technicien = new ArrayCollection();
+      
     }
 
     public function getId(): ?int
@@ -110,39 +103,6 @@ class Intervention
         return $this;
     }
 
-    public function getDemande(): ?demandeIntervention
-    {
-        return $this->demande;
-    }
-
-    public function setDemande(?demandeIntervention $demande): static
-    {
-        $this->demande = $demande;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Technicien>
-     */
-    public function getTechnicien(): Collection
-    {
-        return $this->technicien;
-    }
-
-    public function addTechnicien(Technicien $technicien): static
-    {
-        if (!$this->technicien->contains($technicien)) {
-            $this->technicien->add($technicien);
-        }
-
-        return $this;
-    }
-
-    public function removeTechnicien(Technicien $technicien): static
-    {
-        $this->technicien->removeElement($technicien);
-
-        return $this;
-    }
+   
+    
 }
