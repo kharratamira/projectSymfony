@@ -2,10 +2,11 @@
 
 namespace App\Entity;
 
-use App\Repository\ClientRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\ClientRepository;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\ArrayCollection;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
 class Client extends User
@@ -15,6 +16,7 @@ class Client extends User
     
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[Groups(['client:read', 'demande:read'])]
     private ?string $adresse = null;
 
    
@@ -22,11 +24,13 @@ class Client extends User
      * @var Collection<int, DemandeIntervention>
      */
     #[ORM\OneToMany(mappedBy: "client", targetEntity: DemandeIntervention::class, cascade: ["persist", "remove"])]
+    #[Groups(['client:read'])]
     private Collection $demandeInterventions;
 
    
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[Groups(['client:read', 'demande:read'])]
     private ?string $entreprise = null;
    
     

@@ -7,22 +7,32 @@ use App\Entity\StatutDemande;
 use App\Entity\DemandeIntervention;
 use App\Repository\ClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Repository\DemandeInterventionRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\DependencyInjection\Loader\Configurator\validator;
+
 
 #[Route('/api')]
 final class DemandeIntervController extends AbstractController{
     private DemandeInterventionRepository $demandeRepository;
     private EntityManagerInterface $entityManager;
-    public function __construct(DemandeInterventionRepository $demandeRepository, EntityManagerInterface $entityManager)
+   private ValidatorInterface $validator;
+    public function __construct(DemandeInterventionRepository $demandeRepository, EntityManagerInterface $entityManager,ValidatorInterface $validator)
     {
         $this->demandeRepository = $demandeRepository;
         $this->entityManager = $entityManager;
+        $this->validator = $validator;
+       
     }
 
 #[Route('/saveDemande', name: 'api_saveDemande', methods: ['POST'])]
@@ -127,8 +137,10 @@ public function saveDemande(
     }
 }
      #[Route('/getDemandes', name: 'api_getDemandes', methods: ['GET'])]
+     
     public function getDemandes(DemandeInterventionRepository $demandeRepository): JsonResponse
     {
+        
         // Fetch all demandes with client details
         $demandes = $demandeRepository->findAllDemande();
 
@@ -150,6 +162,7 @@ public function saveDemande(
                     'id' => $demande->getClient()->getId(),
                     'adresse'=>$demande->getClient()->getAdresse(),
                     'entreprise'=>$demande->getClient()->getEntreprise(),
+                    'email' => $demande->getClient()->getEmail(),
                 ],
                 'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
                 'actionDate' => $demande->getActionDate()->format('Y-m-d H:i:s'),
@@ -318,4 +331,59 @@ public function cancelDemande(int $id, EntityManagerInterface $em): JsonResponse
     }
 }
 
-}    
+#[Route('/demandesclient', name: 'api_demandes_by_client_email', methods: ['GET'])]
+public function getDemandeByClientEmail(
+    Request $request,
+    SerializerInterface $serializer,
+    ClientRepository $clientRepository,
+    ValidatorInterface $validator
+): JsonResponse {
+    // 1. Récupération et validation de l'email
+    $email = $request->query->get('email');
+    
+    $errors = $validator->validate($email, [
+        new Assert\NotBlank(),
+        new Assert\Email()
+    ]);
+
+    if (count($errors) > 0) {
+        return $this->json([
+            'status' => 'error',
+            'message' => 'Email invalide',
+            'errors' => (string) $errors
+        ], JsonResponse::HTTP_BAD_REQUEST);
+    }
+
+    // 2. Vérification de l'existence du client
+    $client = $clientRepository->findOneBy(['email' => $email]);
+    
+    if (!$client) {
+        return $this->json([
+            'status' => 'error',
+            'message' => 'Client non trouvé'
+        ], JsonResponse::HTTP_NOT_FOUND);
+    }
+
+    // 3. Récupération des demandes
+    $demandes = $this->demandeRepository->findBy([
+        'client' => $client
+    ], ['dateDemande' => 'DESC']);
+
+    // 4. Formatage de la réponse
+    $context = [
+        'groups' => ['demande:read'],
+        'datetime_format' => 'Y-m-d H:i:s'
+    ];
+
+    return new JsonResponse(
+        $serializer->serialize([
+            'status' => 'success',
+            'count' => count($demandes),
+            'data' => $demandes
+        ], 'json', $context),
+        JsonResponse::HTTP_OK,
+        [],
+        true
+    );
+}
+}

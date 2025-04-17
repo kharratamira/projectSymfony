@@ -45,6 +45,16 @@ class DemandeInterventionRepository extends ServiceEntityRepository
         // ->getQuery()
         // ->getResult();
     }
+    public function findByClientEmail(string $email): array
+{
+    return $this->createQueryBuilder('d')
+        ->join('d.client', 'c')
+        ->where('c.email = :email')
+        ->setParameter('email', $email)
+        ->orderBy('d.dateDemande', 'DESC') 
+        ->getQuery()
+        ->getResult();
+}
     public function updateDemande(DemandeIntervention $updatedDemande): void
     {
         // Find the existing DemandeIntervention entity by ID
@@ -74,6 +84,16 @@ class DemandeInterventionRepository extends ServiceEntityRepository
         if ($flush) {
             $entityManager->flush();
         }
+    }
+    public function findDemandesByClientEmail(string $email): array
+    {
+        return $this->createQueryBuilder('d')
+            ->join('d.client', 'c')
+            ->where('c.email = :email')
+            ->setParameter('email', $email)
+            //->orderBy('d.dateCreation', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 }
 //    /**

@@ -48,7 +48,9 @@ public function login(Request $request): JsonResponse
     if (!$client) {
         return $this->json(['error' => 'Account does not exist'], JsonResponse::HTTP_UNAUTHORIZED);
     }
-
+    if (!$client->isActive()) {
+        return $this->json(['error' => 'Account is not active'], JsonResponse::HTTP_FORBIDDEN);
+    }
     // Check if the password is valid using the password hasher
     if (!$this->passwordHasher->isPasswordValid($client, $password)) {
         return $this->json(['error' => 'Invalid credentials'], JsonResponse::HTTP_UNAUTHORIZED);
@@ -57,6 +59,7 @@ public function login(Request $request): JsonResponse
     $session = $request->getSession();
     $session->set('user_nom', $client->getNom());
     $session->set('user_prenom', $client->getPrenom());
+    $session->set('user_roles', $client->getRoles());
     // Create a new token for the authenticated client
     $token = new UsernamePasswordToken($client, 'user_main', $client->getRoles());
     $this->tokenStorage->setToken($token);
@@ -86,14 +89,16 @@ public function getUserInfo(Request $request): JsonResponse
     $session = $request->getSession();
     $nom = $session->get('user_nom');
     $prenom = $session->get('user_prenom');
+    $roles = $session->get('user_roles');
 
-    if (!$nom || !$prenom) {
+    if (!$nom || !$prenom || !$roles) {
         return $this->json(['error' => 'User not logged in'], JsonResponse::HTTP_UNAUTHORIZED);
     }
 
     return $this->json([
         'nom' => $nom,
-        'prenom' => $prenom
+        'prenom' => $prenom,
+        'roles' => $roles
     ]);
 }
 // #[Route('/sessionUser', name: 'api_get_user', methods: ['GET'])]

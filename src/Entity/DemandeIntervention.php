@@ -2,11 +2,12 @@
 
 namespace App\Entity;
 use App\Entity\StatutDemande;
-use App\Repository\DemandeInterventionRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\ArrayCollection;
+use App\Repository\DemandeInterventionRepository;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: DemandeInterventionRepository::class)]
 class DemandeIntervention
@@ -14,22 +15,27 @@ class DemandeIntervention
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['demande:read', 'client:read'])]
     private ?int $id = null;
 
     // #[ORM\Column(length: 255)]
     // private ?string $nomSociete = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['demande:read', 'client:read'])]
     private ?string $description = null;
 
     #[ORM\Column(type:"string",enumType: StatutDemande::class)]
+    #[Groups(['demande:read', 'client:read'])]
     private ?StatutDemande $statut = null;
 
     #[ORM\ManyToOne(inversedBy: 'demandeInterventions')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['demande:read', 'client:read'])]
     private ?Client $client = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['demande:read', 'client:read'])]
     private ?\DateTimeInterface $dateDemande = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
