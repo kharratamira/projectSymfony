@@ -31,7 +31,7 @@ class DemandeInterventionRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('d')
             ->leftJoin('d.client', 'c') // Join the client entity
             ->select('d', 'c') // Select relevant fields
-            ->orderBy('d.dateDemande', 'DESC'); // Order by date of the request
+            ->orderBy('d.id', 'DESC'); // Order by date of the request
 
         // Get the results as an array of DemandeIntervention entities
         $demandes = $qb->getQuery()->getResult();

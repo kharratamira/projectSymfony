@@ -68,14 +68,31 @@ final class AffectationController extends AbstractController{
                 );
             }
             // 5. Vérification de la disponibilité du technicien
-            $existingAffectation = $affectationRepository->findOneBy([
-                'technicien' => $technicien,
-                'datePrevu' => $datePrevu
-            ]);
+            // $existingAffectation = $affectationRepository->findOneBy([
+            //     'technicien' => $technicien,
+            //     'datePrevu' => $datePrevu
+            // ]);
     
-            if ($existingAffectation) {
+            // if ($existingAffectation) {
+            //     return $this->json(
+            //         ['error' => 'Le technicien est déjà affecté à une autre demande pour cette date.'],
+            //         Response::HTTP_CONFLICT
+            //     );
+            // }
+            $existingAffectations = $affectationRepository->getAffectation([
+                'technicien_id' => $technicien->getId(),
+                'date_prevu' => $datePrevu
+            ]);
+            if (count($existingAffectations) > 0) {
+                $techName = $existingAffectations[0]['technicien_nom'] . ' ' . $existingAffectations[0]['technicien_prenom'];
                 return $this->json(
-                    ['error' => 'Le technicien est déjà affecté à une autre demande pour cette date.'],
+                    [
+                        'error' => 'Le technicien est déjà affecté à cette date.',
+                        'details' => [
+                            'technicien' => $techName,
+                            'date' => $datePrevu->format('Y-m-d H:i')
+                        ]
+                    ],
                     Response::HTTP_CONFLICT
                 );
             }
@@ -93,7 +110,7 @@ final class AffectationController extends AbstractController{
             $affectation->setDemande($demande)
                         ->setTechnicien($technicien)
                         ->setDatePrevu($datePrevu);
-    
+                        $demande->setIsAffecter(true);
             // 8. Validation
             $errors = $validator->validate($affectation);
             if (count($errors) > 0) {
@@ -125,13 +142,39 @@ final class AffectationController extends AbstractController{
         }
     }
     
+    // #[Route('/getAffectation', name: 'get_affectation', methods: ['GET'])]
+    // public function getAffectation(
+    //     Request $request,
+    //     AffecterDemandeRepository $affectationRepository
+    // ): JsonResponse {
+    //     try {
+    //         $affectations = $affectationRepository->getAffectation();
+    
+    //         return $this->json($affectations, Response::HTTP_OK);
+    //     } catch (\Exception $e) {
+    //         return $this->json(
+    //             ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
+    //             Response::HTTP_INTERNAL_SERVER_ERROR
+    //         );
+    //     }
+    // }
+
     #[Route('/getAffectation', name: 'get_affectation', methods: ['GET'])]
     public function getAffectation(
         Request $request,
         AffecterDemandeRepository $affectationRepository
     ): JsonResponse {
         try {
-            $affectations = $affectationRepository->getAffectation();
+            $filters = [
+                'technicien_id' => $request->query->get('technicien_id'),
+                'date_prevu' => $request->query->get('date_prevu') 
+                    ? new \DateTime($request->query->get('date_prevu')) 
+                    : null
+            ];
+            
+            $affectations = $affectationRepository->getAffectation(
+                array_filter($filters) // Ne garde que les filtres non nuls
+            );
     
             return $this->json($affectations, Response::HTTP_OK);
         } catch (\Exception $e) {
@@ -141,8 +184,6 @@ final class AffectationController extends AbstractController{
             );
         }
     }
-
-
 
 
 }

@@ -56,6 +56,9 @@ class DemandeIntervention
    
      #[ORM\OneToMany(mappedBy: 'demande', targetEntity: AffecterDemande::class, cascade: ['persist', 'remove'])]
      private Collection $affecterDemandes;
+
+     #[ORM\Column]
+     private ?bool $isAffecter = null;
  
 
     public function __construct()
@@ -64,6 +67,7 @@ class DemandeIntervention
         $this->dateDemande = new \DateTime(); // Date actuelle
         $this->statut = StatutDemande::EN_ATTENTE; // Statut par défaut
         $this->affecterDemandes = new ArrayCollection();
+        $this->isAffecter = false; // Initialiser à false
     }
     public function getId(): ?int
     {
@@ -194,6 +198,18 @@ class DemandeIntervention
                 $affecterDemande->setDemande(null);
             }
         }
+
+        return $this;
+    }
+
+    public function isAffecter(): ?bool
+    {
+        return $this->isAffecter;
+    }
+
+    public function setIsAffecter(bool $isAffecter): static
+    {
+        $this->isAffecter = $isAffecter;
 
         return $this;
     }

@@ -79,6 +79,7 @@ public function saveDemande(
                 ->setStatut($statut)
                 ->setDateDemande(new \DateTime())
                 ->setActionDate(new \DateTime())
+                ->setIsAffecter(false)
                 ->setClient($client);
 
         // Gestion des photos en base64
@@ -166,6 +167,7 @@ public function saveDemande(
                 ],
                 'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
                 'actionDate' => $demande->getActionDate()->format('Y-m-d H:i:s'),
+                'isAffecter' => $demande->isAffecter(),
                 'photos' => [
                     $demande->getPhoto1() ? $baseUrl . $demande->getPhoto1() : null,
                     $demande->getPhoto2() ? $baseUrl . $demande->getPhoto2() : null,
