@@ -142,8 +142,8 @@ final class AffectationController extends AbstractController{
         }
     }
     
-    // #[Route('/getAffectation', name: 'get_affectation', methods: ['GET'])]
-    // public function getAffectation(
+    // #[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
+    // public function getAffectations(
     //     Request $request,
     //     AffecterDemandeRepository $affectationRepository
     // ): JsonResponse {
@@ -170,7 +170,9 @@ final class AffectationController extends AbstractController{
                 'date_prevu' => $request->query->get('date_prevu') 
                     ? new \DateTime($request->query->get('date_prevu')) 
                     : null
+                    
             ];
+            
             
             $affectations = $affectationRepository->getAffectation(
                 array_filter($filters) // Ne garde que les filtres non nuls
@@ -185,5 +187,33 @@ final class AffectationController extends AbstractController{
         }
     }
 
+#[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
+    public function getAffectationss(
+        Request $request,
+        AffecterDemandeRepository $affectationRepository
+    ): JsonResponse {
+        try {
+            $email = $request->query->get('email');
+            
+            if (!$email) {
+                return $this->json(
+                    ['error' => 'Email du technicien requis'],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+    
+            $affectations = $affectationRepository->findByTechnicienEmail($email);
+            foreach ($affectations as &$aff) {
+                if ($aff['datePrevu'] instanceof \DateTime) {
+                    $aff['datePrevu'] = $aff['datePrevu']->format('Y-m-d\TH:i:sP');
+                }}
+            return $this->json($affectations, Response::HTTP_OK);
+        } catch (\Exception $e) {
+            return $this->json(
+                ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 
 }

@@ -4,7 +4,7 @@ namespace App\Entity;
 enum StatutAffectation: string
 {
     case EN_ATTENTE = 'en_attente';
-    case PLANIFIEE = 'planifiee';
+  
     case EN_COURS = 'en_cours';
     case TERMINEE = 'terminee';
    
@@ -12,7 +12,7 @@ enum StatutAffectation: string
     {
         return [
             self::EN_ATTENTE->value,
-            self::PLANIFIEE->value,
+          
             
             self::EN_COURS->value,
             self::TERMINEE->value,
