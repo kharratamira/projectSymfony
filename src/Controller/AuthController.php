@@ -34,128 +34,6 @@ final class AuthController extends AbstractController
         $this->entityManager = $entityManager;
         $this->passwordEncoder = $passwordEncoder;
     }
-
-    #[Route('/signup_client', name: 'api_signup_client', methods: ['POST'])]
-public function signup(Request $request, ClientRepository $clientRepository, ValidatorInterface $validator, SluggerInterface $slugger): JsonResponse
-{
-    // Récupérer les données du formulaire
-    $data = $request->request->all();
-    $photoFile = $request->files->get('photo');
-
-    // Vérifier les champs requis
-    $requiredFields = ['email', 'password', 'nom', 'prenom', 'adresse', 'numTel', 'entreprise'];
-    $missingFields = [];
-    
-    foreach ($requiredFields as $field) {
-        if (!isset($data[$field]) || empty(trim($data[$field]))) {
-            $missingFields[] = $field;
-        }
-    }
-    
-    if (!empty($missingFields)) {
-        return $this->json([
-            'error' => 'Champs requis manquants',
-            'missing_fields' => $missingFields
-        ], Response::HTTP_BAD_REQUEST);
-    }
-
-    // Vérifier si l'email existe déjà
-    $existingClient = $clientRepository->findOneBy(['email' => $data['email']]);
-    if ($existingClient) {
-        return $this->json([
-            'error' => 'Cet email est déjà utilisé'
-        ], Response::HTTP_BAD_REQUEST);
-    }
-
-    // Création d'un nouveau client
-    $client = new Client();
-    $client->setEmail($data['email']);
-    $client->setPassword($this->passwordEncoder->hashPassword($client, $data['password']));
-    $client->setNom($data['nom']);
-    $client->setPrenom($data['prenom']);
-    $client->setAdresse($data['adresse']);
-    $client->setNumTel($data['numTel']);
-    $client->setEntreprise($data['entreprise']);
-    $client->setDateCreation(new \DateTime());
-    $client->setIsActive(true); // Définit isActive à true par défaut
-
-    // Gestion du rôle CLIENT
-    $roleClient = $this->entityManager->getRepository(Role::class)->findOneBy(['nom_role' => 'ROLE_CLIENT']);
-    if (!$roleClient) {
-        return $this->json([
-            'error' => 'Erreur de configuration du rôle'
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
-    }
-    $client->setRole($roleClient);
-
-    // Traitement de la photo si elle est fournie
-    if ($photoFile) {
-        // Validation du type de fichier
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        $mimeType = $photoFile->getMimeType();
-        
-        if (!in_array($mimeType, $allowedMimeTypes)) {
-            return $this->json([
-                'error' => 'Type de fichier non supporté (seuls JPEG, PNG et GIF sont acceptés)'
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Validation de la taille (max 2MB)
-        if ($photoFile->getSize() > 2 * 1024 * 1024) {
-            return $this->json([
-                'error' => 'La taille de l\'image ne doit pas dépasser 2MB'
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Génération d'un nom de fichier unique
-        $originalname = pathinfo($photoFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $Filename = $slugger->slug($originalname);
-        $newName = $Filename.'-'.uniqid().'.'.$photoFile->guessExtension();
-
-        // Déplacement du fichier
-        try {
-            $photoFile->move(
-                $this->getParameter('user_photos_directory'),
-                $newName
-            );
-            $client->setPhoto($newName);
-        } catch (FileException $e) {
-            return $this->json([
-                'error' => 'Erreur lors de l\'enregistrement de l\'image'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    // Validation des données
-    $errors = $validator->validate($client);
-    if (count($errors) > 0) {
-        $errorMessages = [];
-        foreach ($errors as $error) {
-            $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-        }
-        
-        return $this->json([
-            'error' => 'Validation failed',
-            'errors' => $errorMessages
-        ], Response::HTTP_BAD_REQUEST);
-    }
-
-    // Enregistrement en base de données
-    try {
-        $this->entityManager->persist($client);
-        $this->entityManager->flush();
-    } catch (\Exception $e) {
-        return $this->json([
-            'error' => 'Erreur lors de l\'enregistrement',
-            'details' => $e->getMessage()
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
-    }
-
-    return $this->json([
-        'message' => 'Client enregistré avec succès',
-        'client_id' => $client->getId()
-    ], Response::HTTP_CREATED);
-}
     
     #[Route('/signup', name: 'api_signup', methods: ['POST'])]
    // #[IsGranted('ROLE_ADMIN')]
@@ -199,6 +77,13 @@ public function signup(Request $request, ClientRepository $clientRepository, Val
                 $user = new Commercial();
                 $user->setRegion($data['region'] ?? 'Tunis');
                 break;
+                case 'client':
+                    $user = new Client();
+                    $user->setAdresse($data['adresse'] ?? '');
+                    $user->setEntreprise($data['entreprise'] ?? '');
+                    break;
+                
+                
 
                 case 'admin':
                     $user = new Admin();
