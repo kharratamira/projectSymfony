@@ -8,11 +8,17 @@ use App\Entity\Admin;
 use App\Entity\Client;
 use App\Entity\Commercial;
 use App\Entity\Technicien;
+use App\Entity\Notification;
+use Symfony\Component\Mime\Email;
 use App\Repository\RoleRepository;
 use App\Repository\UserRepository;
+use Symfony\Component\Mime\Address;
 use App\Repository\ClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
+
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,6 +27,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\Notifier\Exception\TransportExceptionInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[Route('/api')]
@@ -42,7 +49,9 @@ final class AuthController extends AbstractController
         EntityManagerInterface $entityManager,
         UserPasswordHasherInterface $passwordHasher,
         RoleRepository $roleRepo,
-        SluggerInterface $slugger
+        SluggerInterface $slugger,
+        MailerInterface $mailer,
+       
     ): JsonResponse {
         try {
         // if (!$this->isGranted('ROLE_ADMIN')) {
@@ -143,7 +152,31 @@ final class AuthController extends AbstractController
         
                 // On sauvegarde !
         $entityManager->persist($user);
-        $entityManager->flush();
+           // Création notification
+           $notif = new Notification();
+           $notif->setTitre('Bienvenue !');
+           $notif->setMessage('Votre compte a été créé avec succès.');
+           $notif->setIsRead(false);
+           $notif->setCreatedAt(new \DateTimeImmutable());
+           $notif->setUsers($user);
+           $entityManager->persist($notif);
+           $email = (new Email())
+    ->from('amirakharrat541@gmail.com')
+    ->to($user->getEmail())
+    ->subject('Test Symfony Mailer')
+    ->text('Ceci est un test depuis Symfony');
+
+
+
+       try {
+        $mailer->send($email);  // Send the email
+       } catch (\Exception $e) {
+           // Handle any mail sending error here
+           return new JsonResponse(['message' => 'Failed to send email', 'error' => $e->getMessage()], 500);
+       }
+
+       // Final response
+       $entityManager->flush();
         $photoUrl = null;
         if ($user->getPhoto()) {
             $photoUrl = $request->getSchemeAndHttpHost() . '/uploads/users/' . $user->getPhoto();
@@ -356,15 +389,44 @@ public function updateCommercial(int $id, Request $request, UserRepository $user
     return new JsonResponse(['message' => 'Commercial mis à jour avec succès'], 200);
 }
 
-// #[Route('/deleteCommercial/{id}', name: 'api_delete_commercial', methods: ['DELETE'])]
-// public function deleteCommercial(int $id, UserRepository $userRepository): JsonResponse
-// {
-//     // Utiliser la méthode deleteTechnicien du UserRepository
-//     $userRepository->deleteCommercial($id);
+#[Route('/test-mail', name: 'api_test_mail', methods: ['POST'])]
+public function sendMailTest(Request $request, MailerInterface $mailer): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
+    $recipient = $data['email'] ?? null;
+    $nom = $data['nom'] ?? 'Utilisateur';
 
-//     return new JsonResponse(['message' => 'Commercial supprimé avec succès'], 200);
-// }
+    if (!$recipient) {
+        return new JsonResponse(['message' => 'Adresse email requise'], 400);
+    }
 
+    try {
+        $email = (new Email())
+            ->from('amirakharrat541@gmail.com') // 🔁 Remplace avec ton email
+            ->to($recipient)
+            ->subject('Test d\'envoi d\'email')
+            ->html("<p>Bonjour <strong>$nom</strong>,<br> Ceci est un test depuis Postman via Symfony.</p>");
+
+        $mailer->send($email);
+
+        return new JsonResponse(['message' => 'Email envoyé avec succès']);
+    } catch (\Exception $e) {
+        return new JsonResponse(['message' => 'Erreur lors de l\'envoi', 'error' => $e->getMessage()], 500);
+    }
+}
+#[Route('/send-test-email', name: 'send_test_email', methods: ['GET'])]
+    public function sendMail(MailerInterface $mailer): JsonResponse
+    {
+        $email = (new Email())
+            ->from('tonadresse@gmail.com')
+            ->to('destination@example.com')
+            ->subject('Test Email')
+            ->text('This is a test email sent from Symfony.');
+
+        $mailer->send($email);
+
+        return $this->json(['message' => 'Email sent successfully']);
+    }
 }
 
 

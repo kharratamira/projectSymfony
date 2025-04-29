@@ -25,11 +25,18 @@ class Technicien extends User
     
      #[ORM\OneToMany(targetEntity: AffecterDemande::class, mappedBy: 'technicien')]
      private Collection $affectations;
+
+     /**
+      * @var Collection<int, AutorisationSortie>
+      */
+     #[ORM\OneToMany(targetEntity: AutorisationSortie::class, mappedBy: 'technicien')]
+     private Collection $autorisationSorties;
     public function __construct()
     {
         parent::__construct();
         
         $this->affectations = new ArrayCollection();
+        $this->autorisationSorties = new ArrayCollection();
     }
 
    
@@ -85,6 +92,36 @@ class Technicien extends User
             // set the owining side to null (unless already changed)
             if ($technicien->getTechnicien() === $this) {
                 $technicien->setTechnicien(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, AutorisationSortie>
+     */
+    public function getAutorisationSorties(): Collection
+    {
+        return $this->autorisationSorties;
+    }
+
+    public function addAutorisationSorty(AutorisationSortie $autorisationSorty): static
+    {
+        if (!$this->autorisationSorties->contains($autorisationSorty)) {
+            $this->autorisationSorties->add($autorisationSorty);
+            $autorisationSorty->setTechnicien($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAutorisationSorty(AutorisationSortie $autorisationSorty): static
+    {
+        if ($this->autorisationSorties->removeElement($autorisationSorty)) {
+            // set the owning side to null (unless already changed)
+            if ($autorisationSorty->getTechnicien() === $this) {
+                $autorisationSorty->setTechnicien(null);
             }
         }
 

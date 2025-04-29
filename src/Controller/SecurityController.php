@@ -90,6 +90,7 @@ public function getUserInfo(Request $request): JsonResponse
     $nom = $session->get('user_nom');
     $prenom = $session->get('user_prenom');
     $roles = $session->get('user_roles');
+    
 
     if (!$nom || !$prenom || !$roles) {
         return $this->json(['error' => 'User not logged in'], JsonResponse::HTTP_UNAUTHORIZED);

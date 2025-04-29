@@ -186,7 +186,7 @@ final class AffectationController extends AbstractController{
             );
         }
     }
-
+////pour chaque technicien voir la calandier specifique 
 #[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
     public function getAffectationss(
         Request $request,

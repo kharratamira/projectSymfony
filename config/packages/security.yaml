@@ -32,19 +32,21 @@ security:
         #         password_parameter: password
         #     logout:
         #         path: api_logout_user
-        user_main:
-            lazy: true
-            provider: app_user_provider
-            form_login:
-                login_path: app_login  # Le chemin pour l'écran de connexion
-                check_path: app_login  # Le chemin pour l'action de vérification du login
-                username_parameter: email  # Le paramètre du nom d'utilisateur
-                password_parameter: password  # Le paramètre du mot de passe
-                enable_csrf: true  # Activer le CSRF
-            logout:
-                path: app_logout
+        # user_main:
+        #     lazy: true
+        #     provider: app_user_provider
+        #     form_login:
+        #         login_path: app_login  # Le chemin pour l'écran de connexion
+        #         check_path: app_login  # Le chemin pour l'action de vérification du login
+        #         username_parameter: email  # Le paramètre du nom d'utilisateur
+        #         password_parameter: password  # Le paramètre du mot de passe
+        #         enable_csrf: true  # Activer le CSRF
+        #     logout:
+        #         path: app_logout
         client_main:  # Ajoutez ce pare-feu pour Client
             lazy: true
+             # Active les sessions PHP
+
             provider: app_client_provider
             form_login:
                 login_path: api_login_client

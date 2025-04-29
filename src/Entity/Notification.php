@@ -14,7 +14,7 @@ class Notification
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $titre = null;
+    private ?string $titre ;
 
     #[ORM\Column(length: 255)]
     private ?string $message = null;
@@ -26,6 +26,7 @@ class Notification
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\ManyToOne(inversedBy: 'notifications')]
+    #[ORM\JoinColumn(nullable: false)]
     private ?User $users = null;
 
     
