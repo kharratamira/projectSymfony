@@ -9,6 +9,7 @@ use App\Repository\AffecterDemandeRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Repository\AutorisationSortieRepository;
 use App\Repository\DemandeInterventionRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -24,6 +25,7 @@ final class AffectationController extends AbstractController{
         AffecterDemandeRepository $affectationRepository,
         EntityManagerInterface $em,
         ValidatorInterface $validator
+        , AutorisationSortieRepository $autorisationSortieRepository
     ): JsonResponse {
         try {
             // 1. Décoder les données JSON
@@ -67,18 +69,7 @@ final class AffectationController extends AbstractController{
                     Response::HTTP_BAD_REQUEST
                 );
             }
-            // 5. Vérification de la disponibilité du technicien
-            // $existingAffectation = $affectationRepository->findOneBy([
-            //     'technicien' => $technicien,
-            //     'datePrevu' => $datePrevu
-            // ]);
-    
-            // if ($existingAffectation) {
-            //     return $this->json(
-            //         ['error' => 'Le technicien est déjà affecté à une autre demande pour cette date.'],
-            //         Response::HTTP_CONFLICT
-            //     );
-            // }
+           
             $existingAffectations = $affectationRepository->getAffectation([
                 'technicien_id' => $technicien->getId(),
                 'date_prevu' => $datePrevu
@@ -96,7 +87,31 @@ final class AffectationController extends AbstractController{
                     Response::HTTP_CONFLICT
                 );
             }
-    
+            $qb = $autorisationSortieRepository->createQueryBuilder('a')
+            ->where('a.technicien = :technicien_id')
+            ->andWhere('a.statutAutorisation = :statut')
+            ->andWhere(':date_prevu BETWEEN a.dateDebut AND a.dateFin')
+            ->setParameter('technicien_id', $technicien->getId())
+            ->setParameter('statut', 'ACCEPTER')
+            ->setParameter('date_prevu', $datePrevu);
+
+        $autorisationsEnConflit = $qb->getQuery()->getResult();
+
+        if (count($autorisationsEnConflit) > 0) {
+            $autorisation = $autorisationsEnConflit[0];
+            return $this->json(
+                [
+                    'error' => 'Le technicien est en autorisation de sortie à cette date.',
+                    'details' => [
+                        'dateDebut' => $autorisation->getDateDebut()->format('Y-m-d H:i'),
+                        'dateFin' => $autorisation->getDateFin()->format('Y-m-d H:i'),
+                        'raison' => $autorisation->getRaison()
+                    ]
+                ],
+                Response::HTTP_CONFLICT
+            );
+        }
+
             // 6. Vérification existence affectation existante pour la demande
             if (!$demande->getAffecterDemandes()->isEmpty()) {
                 return $this->json(
@@ -162,14 +177,17 @@ final class AffectationController extends AbstractController{
     #[Route('/getAffectation', name: 'get_affectation', methods: ['GET'])]
     public function getAffectation(
         Request $request,
-        AffecterDemandeRepository $affectationRepository
+        AffecterDemandeRepository $affectationRepository,
+        AutorisationSortieRepository $autorisationSortieRepository
+
     ): JsonResponse {
         try {
             $filters = [
                 'technicien_id' => $request->query->get('technicien_id'),
                 'date_prevu' => $request->query->get('date_prevu') 
                     ? new \DateTime($request->query->get('date_prevu')) 
-                    : null
+                    : null,
+                    'statuts' => ['EN_ATTENTE', 'EN_COURS']
                     
             ];
             
@@ -177,8 +195,24 @@ final class AffectationController extends AbstractController{
             $affectations = $affectationRepository->getAffectation(
                 array_filter($filters) // Ne garde que les filtres non nuls
             );
-    
-            return $this->json($affectations, Response::HTTP_OK);
+            
+            $qb = $autorisationSortieRepository->createQueryBuilder('a')
+            ->select('a.id, a.dateDebut, a.dateFin')
+            ->where('a.statutAutorisation = :statut')
+            ->setParameter('statut', 'ACCEPTER');
+
+        if (!empty($filters['technicien_id'])) {
+            $qb->andWhere('a.technicien = :technicien_id')
+               ->setParameter('technicien_id', $filters['technicien_id']);
+        }
+
+        $autorisations = $qb->getQuery()->getArrayResult();
+        
+
+return $this->json([
+            'affectations' => $affectations,
+            'autorisations' => $autorisations
+        ], Response::HTTP_OK);
         } catch (\Exception $e) {
             return $this->json(
                 ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
@@ -187,33 +221,90 @@ final class AffectationController extends AbstractController{
         }
     }
 ////pour chaque technicien voir la calandier specifique 
-#[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
-    public function getAffectationss(
-        Request $request,
-        AffecterDemandeRepository $affectationRepository
-    ): JsonResponse {
-        try {
-            $email = $request->query->get('email');
+// #[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
+//     public function getAffectationss(
+//         Request $request,
+//         AffecterDemandeRepository $affectationRepository,
+//         TechnicienRepository $technicienRepository,
+//         AutorisationSortieRepository $autorisationSortieRepository,
+
+
+//     ): JsonResponse {
+//         try {
+//             $email = $request->query->get('email');
             
-            if (!$email) {
-                return $this->json(
-                    ['error' => 'Email du technicien requis'],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
-    
-            $affectations = $affectationRepository->findByTechnicienEmail($email);
-            foreach ($affectations as &$aff) {
-                if ($aff['datePrevu'] instanceof \DateTime) {
-                    $aff['datePrevu'] = $aff['datePrevu']->format('Y-m-d\TH:i:sP');
-                }}
-            return $this->json($affectations, Response::HTTP_OK);
-        } catch (\Exception $e) {
-            return $this->json(
-                ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
-        }
+            
+//             $technicien = $technicienRepository->findOneBy(['email' => $email]);
+
+//             if (!$technicien) {
+//                 return $this->json(
+//                     ['error' => 'Technicien introuvable.'],
+//                     Response::HTTP_NOT_FOUND
+//                 );
+//             }
+//             $affectations = $affectationRepository->findByTechnicienEmail($email);
+//             foreach ($affectations as &$aff) {
+//                 if ($aff['datePrevu'] instanceof \DateTime) {
+//                     $aff['datePrevu'] = $aff['datePrevu']->format('Y-m-d\TH:i:sP');
+//                 }}
+//   $autorisations = $autorisationSortieRepository->createQueryBuilder('a')
+//             ->select('a.id, a.dateDebut, a.dateFin, a.raison')
+//             ->where('a.technicien = :technicien_id')
+//             ->andWhere('a.statutAutorisation = :statut')
+//             ->setParameter('technicien_id', $technicien->getId())
+//             ->setParameter('statut', 'ACCEPTER')
+//             ->getQuery()
+//             ->getArrayResult();
+
+//         // Formater les dates des autorisations
+//         foreach ($autorisations as &$auth) {
+//             if ($auth['dateDebut'] instanceof \DateTime) {
+//                 $auth['dateDebut'] = $auth['dateDebut']->format('Y-m-d\TH:i:sP');
+//             }
+//             if ($auth['dateFin'] instanceof \DateTime) {
+//                 $auth['dateFin'] = $auth['dateFin']->format('Y-m-d\TH:i:sP');
+//             }
+//         }
+
+//         // Retourner les affectations et les autorisations
+//         return $this->json([
+//             'affectations' => $affectations,
+//             'autorisations' => $autorisations
+//         ], Response::HTTP_OK);        } catch (\Exception $e) {
+//             return $this->json(
+//                 ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
+//                 Response::HTTP_INTERNAL_SERVER_ERROR
+//             );
+//         }
+//     }
+#[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
+public function getAffectationsTechnicien(
+    Request $request,
+    AffecterDemandeRepository $affectationRepo,
+    AutorisationSortieRepository $autorisationRepo,
+    TechnicienRepository $technicienRepo
+): JsonResponse {
+    $email = $request->query->get('email');
+    $technicien = $technicienRepo->findOneBy(['email' => $email]);
+
+    if (!$technicien) {
+        return $this->json(['message' => 'Technicien non trouvé'], 404);
     }
+
+    $affectations = $affectationRepo->getAffectationWithDetails(['email' => $email]);
+    $autorisations = $autorisationRepo->findBy(['technicien' => $technicien]);
+
+    return $this->json([
+        'affectations' => $affectations,
+        'autorisations' => array_map(function ($auto) {
+            return [
+                'id' => $auto->getId(),
+                'raison' => $auto->getRaison(),
+                'dateDebut' => $auto->getDateDebut()->format('Y-m-d'),
+                'dateFin' => $auto->getDateFin()->format('Y-m-d'),
+            ];
+        }, $autorisations)
+    ]);
+}
 
 }

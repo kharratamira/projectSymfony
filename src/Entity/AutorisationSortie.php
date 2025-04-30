@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\AutorisationSortieRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AutorisationSortieRepository::class)]
 class AutorisationSortie
@@ -12,28 +13,36 @@ class AutorisationSortie
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(["autorisation:read"])]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(["autorisation:read"])]
     private ?\DateTimeInterface $dateDebut = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(["autorisation:read"])]
     private ?\DateTimeInterface $dateFin = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(["autorisation:read"])]
     private ?string $raison = null;
 
     #[ORM\ManyToOne(targetEntity: Technicien::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(["autorisation:read"])]
     private ?Technicien $technicien = null;
-    #[ORM\Column(type:"string",enumType: StatutAffectation::class)]
-    
+
+    #[ORM\Column(type: "string", enumType: StatutAutorisation::class)]
+    #[Groups(["autorisation:read"])]
     private ?StatutAutorisation $statutAutorisation = null;
+
     public function __construct()
     {
         $this->statutAutorisation = StatutAutorisation::EN_ATTENTE;
     }
-        public function getId(): ?int
+
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -85,15 +94,16 @@ class AutorisationSortie
 
         return $this;
     }
-    public function getStatut(): StatutAutorisation
+
+    public function getStatutAutorisation(): StatutAutorisation
     {
         return $this->statutAutorisation;
     }
 
-    public function setStatut(StatutAutorisation $statutAutorisation): static
+    public function setStatutAutorisation(StatutAutorisation $statutAutorisation): static
     {
         $this->statutAutorisation = $statutAutorisation;
+
         return $this;
     }
-    
 }

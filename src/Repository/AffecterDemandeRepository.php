@@ -15,28 +15,7 @@ class AffecterDemandeRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, AffecterDemande::class);
     }
-    
-    // public function getAffectation(array $criteria = []): array
-    // {
-    //     $qb = $this->createQueryBuilder('a')
-    //         ->select('
-    //             a.id,
-    //             a.datePrevu,
-    //             a.dateAfectation,
-    //             a.statutAffectation,
-    //             t.nom AS technicienNom,
-    //             t.prenom AS technicienPrenom,
-    //             d.description AS demandeDescription,
-    //             c.adresse AS clientAdresse
-    //         ')
-    //         ->join('a.technicien', 't')
-    //         ->join('a.demande', 'd')
-    //         ->join('d.client', 'c'); // Jointure avec l'entité Client
-    
-    //     return $qb->getQuery()->getArrayResult();
-    // }
-    // Dans AffecterDemandeRepository.php
-public function getAffectation(array $criteria = []): array
+  public function getAffectation(array $criteria = []): array
 {
     $qb = $this->createQueryBuilder('a')
         ->select('
@@ -61,47 +40,51 @@ public function getAffectation(array $criteria = []): array
         $qb->andWhere('a.datePrevu = :date_prevu')
            ->setParameter('date_prevu', $criteria['date_prevu']);
     }
-
-    return $qb->getQuery()->getArrayResult();
-}
-public function getAffectationdddd(array $criteria): array
-{
-    $qb = $this->createQueryBuilder('a')
-        ->leftJoin('a.technicien', 't') // jointure avec l'entité Technicien
-        ->leftJoin('a.demande', 'd')    // jointure avec la demande si besoin
-        ->addSelect('t', 'd');
-
-    if (!empty($criteria['technicien_id'])) {
-        $qb->andWhere('t.id = :technicien_id')
-           ->setParameter('technicien_id', $criteria['technicien_id']);
-    }
-
-    if (!empty($criteria['email'])) {
-        $qb->andWhere('t.email = :email')
-           ->setParameter('email', $criteria['email']);
-    }
-
-    if (!empty($criteria['date_prevu'])) {
-        $qb->andWhere('a.datePrevu = :date_prevu')
-           ->setParameter('date_prevu', $criteria['date_prevu']);
+    if (!empty($criteria['statuts'])) {
+        $qb->andWhere('a.statutAffectation IN (:statuts)')
+           ->setParameter('statuts', $criteria['statuts']);
     }
 
     return $qb->getQuery()->getArrayResult();
 }
+// public function getAffectationdddd(array $criteria): array
+// {
+//     $qb = $this->createQueryBuilder('a')
+//         ->leftJoin('a.technicien', 't') // jointure avec l'entité Technicien
+//         ->leftJoin('a.demande', 'd')    // jointure avec la demande si besoin
+//         ->addSelect('t', 'd');
 
-    public function findTechnicienAvailability(int $technicienId, \DateTimeInterface $datePrevu): bool
-    {
-        $result = $this->createQueryBuilder('a')
-            ->select('COUNT(a.id)')
-            ->where('a.technicien = :technicienId')
-            ->andWhere('a.datePrevu = :datePrevu')
-            ->setParameter('technicienId', $technicienId)
-            ->setParameter('datePrevu', $datePrevu)
-            ->getQuery()
-            ->getSingleScalarResult();
+//     if (!empty($criteria['technicien_id'])) {
+//         $qb->andWhere('t.id = :technicien_id')
+//            ->setParameter('technicien_id', $criteria['technicien_id']);
+//     }
+
+//     if (!empty($criteria['email'])) {
+//         $qb->andWhere('t.email = :email')
+//            ->setParameter('email', $criteria['email']);
+//     }
+
+//     if (!empty($criteria['date_prevu'])) {
+//         $qb->andWhere('a.datePrevu = :date_prevu')
+//            ->setParameter('date_prevu', $criteria['date_prevu']);
+//     }
+
+//     return $qb->getQuery()->getArrayResult();
+// }
+
+//     public function findTechnicienAvailability(int $technicienId, \DateTimeInterface $datePrevu): bool
+//     {
+//         $result = $this->createQueryBuilder('a')
+//             ->select('COUNT(a.id)')
+//             ->where('a.technicien = :technicienId')
+//             ->andWhere('a.datePrevu = :datePrevu')
+//             ->setParameter('technicienId', $technicienId)
+//             ->setParameter('datePrevu', $datePrevu)
+//             ->getQuery()
+//             ->getSingleScalarResult();
     
-        return $result === 0;
-    }
+//         return $result === 0;
+//     }
     public function getAffectationWithDetails(array $criteria): array
 {
     $qb = $this->createQueryBuilder('a')
