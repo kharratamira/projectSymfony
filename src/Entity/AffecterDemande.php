@@ -29,7 +29,8 @@ class AffecterDemande
     #[ORM\JoinColumn(nullable: false)]
     private ?DemandeIntervention $demande = null;
 
-
+    #[ORM\OneToOne(mappedBy: 'affectation', targetEntity: Intervention::class, cascade: ['persist', 'remove'])]
+    private ?Intervention $intervention = null; 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dateAfectation = null;
     public function __construct()
@@ -101,4 +102,14 @@ class AffecterDemande
 
         return $this;
     }
+    public function getIntervention(): ?Intervention
+{
+    return $this->intervention;
+}
+
+public function setIntervention(?Intervention $intervention): static
+{
+    $this->intervention = $intervention;
+    return $this;
+}
 }

@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\AffecterDemande;
+use App\Entity\StatutAffectation;
+use App\Entity\StatutAutorisation;
 use App\Repository\TechnicienRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\AffecterDemandeRepository;
@@ -157,22 +159,7 @@ final class AffectationController extends AbstractController{
         }
     }
     
-    // #[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
-    // public function getAffectations(
-    //     Request $request,
-    //     AffecterDemandeRepository $affectationRepository
-    // ): JsonResponse {
-    //     try {
-    //         $affectations = $affectationRepository->getAffectation();
-    
-    //         return $this->json($affectations, Response::HTTP_OK);
-    //     } catch (\Exception $e) {
-    //         return $this->json(
-    //             ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
-    //             Response::HTTP_INTERNAL_SERVER_ERROR
-    //         );
-    //     }
-    // }
+   
 
     #[Route('/getAffectation', name: 'get_affectation', methods: ['GET'])]
     public function getAffectation(
@@ -220,63 +207,6 @@ return $this->json([
             );
         }
     }
-////pour chaque technicien voir la calandier specifique 
-// #[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
-//     public function getAffectationss(
-//         Request $request,
-//         AffecterDemandeRepository $affectationRepository,
-//         TechnicienRepository $technicienRepository,
-//         AutorisationSortieRepository $autorisationSortieRepository,
-
-
-//     ): JsonResponse {
-//         try {
-//             $email = $request->query->get('email');
-            
-            
-//             $technicien = $technicienRepository->findOneBy(['email' => $email]);
-
-//             if (!$technicien) {
-//                 return $this->json(
-//                     ['error' => 'Technicien introuvable.'],
-//                     Response::HTTP_NOT_FOUND
-//                 );
-//             }
-//             $affectations = $affectationRepository->findByTechnicienEmail($email);
-//             foreach ($affectations as &$aff) {
-//                 if ($aff['datePrevu'] instanceof \DateTime) {
-//                     $aff['datePrevu'] = $aff['datePrevu']->format('Y-m-d\TH:i:sP');
-//                 }}
-//   $autorisations = $autorisationSortieRepository->createQueryBuilder('a')
-//             ->select('a.id, a.dateDebut, a.dateFin, a.raison')
-//             ->where('a.technicien = :technicien_id')
-//             ->andWhere('a.statutAutorisation = :statut')
-//             ->setParameter('technicien_id', $technicien->getId())
-//             ->setParameter('statut', 'ACCEPTER')
-//             ->getQuery()
-//             ->getArrayResult();
-
-//         // Formater les dates des autorisations
-//         foreach ($autorisations as &$auth) {
-//             if ($auth['dateDebut'] instanceof \DateTime) {
-//                 $auth['dateDebut'] = $auth['dateDebut']->format('Y-m-d\TH:i:sP');
-//             }
-//             if ($auth['dateFin'] instanceof \DateTime) {
-//                 $auth['dateFin'] = $auth['dateFin']->format('Y-m-d\TH:i:sP');
-//             }
-//         }
-
-//         // Retourner les affectations et les autorisations
-//         return $this->json([
-//             'affectations' => $affectations,
-//             'autorisations' => $autorisations
-//         ], Response::HTTP_OK);        } catch (\Exception $e) {
-//             return $this->json(
-//                 ['error' => 'Une erreur est survenue : ' . $e->getMessage()],
-//                 Response::HTTP_INTERNAL_SERVER_ERROR
-//             );
-//         }
-//     }
 #[Route('/getAffectationss', name: 'get_affectationss', methods: ['GET'])]
 public function getAffectationsTechnicien(
     Request $request,
@@ -292,8 +222,14 @@ public function getAffectationsTechnicien(
     }
 
     $affectations = $affectationRepo->getAffectationWithDetails(['email' => $email]);
-    $autorisations = $autorisationRepo->findBy(['technicien' => $technicien]);
-
+    $autorisations = $autorisationRepo->createQueryBuilder('a')
+    ->where('a.technicien = :technicien')
+    ->andWhere('a.statutAutorisation = :statut')
+    ->setParameter('technicien', $technicien)
+        ->setParameter('statut', StatutAutorisation::ACCEPTER)
+    ->orderBy('a.dateDebut', 'DESC') // Trier par dateDebut en ordre décroissant
+    ->getQuery()
+    ->getResult();
     return $this->json([
         'affectations' => $affectations,
         'autorisations' => array_map(function ($auto) {
@@ -305,6 +241,60 @@ public function getAffectationsTechnicien(
             ];
         }, $autorisations)
     ]);
+}
+
+#[Route('/enCour/{id}', name: 'update_statut_en_cour', methods: ['PUT'])]
+public function enCour(
+    int $id,
+    AffecterDemandeRepository $affecterDemandeRepository,
+    EntityManagerInterface $em
+): Response {
+    $affectation = $affecterDemandeRepository->find($id);
+
+    if ($affectation->getStatutAffectation() === StatutAffectation::TERMINEE) {
+        return $this->json([
+            'status' => 'error',
+            'message' => 'Impossible de changer le statut, il est déjà terminé.'
+        ], Response::HTTP_BAD_REQUEST);
+    }
+    
+    if ($affectation->getStatutAffectation() === StatutAffectation::EN_COURS) {
+        return $this->json([
+            'status' => 'info',
+            'message' => 'Le statut est déjà en cours.'
+        ], Response::HTTP_OK);
+    }
+    
+    // Sinon, on le passe à EN_COURS
+    $affectation->setStatutAffectation(StatutAffectation::EN_COURS);
+    $em->flush();
+    
+    return $this->json([
+        'status' => 'success',
+        'message' => 'Le statut a été mis à jour en "en_cours" avec succès.'
+    ], Response::HTTP_OK);
+    
+
+  
+
+}
+
+#[Route('/termine/{id}', name: 'update_statut_termine', methods: ['PUT'])]
+public function termine(
+    int $id,
+    AffecterDemandeRepository $affecterDemandeRepository,
+    EntityManagerInterface $em
+): Response {
+    $affectation = $affecterDemandeRepository->find($id);
+
+    if (!$affectation) {
+        return $this->json(['status' => 'error', 'message' => 'affectation non trouvée.'], Response::HTTP_NOT_FOUND);
+    }
+
+    $affectation->setStatutAffectation(StatutAffectation::TERMINEE);
+    $em->flush();
+
+    return $this->json(['status' => 'success', 'message' => 'La statut en_cour avec  succès.'], Response::HTTP_OK);
 }
 
 }

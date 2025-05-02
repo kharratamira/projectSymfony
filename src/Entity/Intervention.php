@@ -16,26 +16,32 @@ class Intervention
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $description = null;
+    
 
     #[ORM\Column(length: 255)]
     private ?string $observation = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private ?\DateTimeInterface $date_prevu_intervention = null;
-
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private ?\DateTimeInterface $date_reele_intervention = null;
+    
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $date_fin = null;
+
+    #[ORM\OneToOne(inversedBy: 'intervention', cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?AffecterDemande $affectation = null;
+    
+
+    /**
+     * @var Collection<int, Tache>
+     */
+    #[ORM\ManyToMany(targetEntity: Tache::class, mappedBy: 'intervention')]
+    private Collection $taches;
 
    
 
     public function __construct()
     {
-      
+        $this->taches = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -43,18 +49,7 @@ class Intervention
         return $this->id;
     }
 
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(string $description): static
-    {
-        $this->description = $description;
-
-        return $this;
-    }
-
+    
     public function getObservation(): ?string
     {
         return $this->observation;
@@ -67,30 +62,6 @@ class Intervention
         return $this;
     }
 
-    public function getDatePrevuIntervention(): ?\DateTimeInterface
-    {
-        return $this->date_prevu_intervention;
-    }
-
-    public function setDatePrevuIntervention(\DateTimeInterface $date_prevu_intervention): static
-    {
-        $this->date_prevu_intervention = $date_prevu_intervention;
-
-        return $this;
-    }
-
-    public function getDateReeleIntervention(): ?\DateTimeInterface
-    {
-        return $this->date_reele_intervention;
-    }
-
-    public function setDateReeleIntervention(\DateTimeInterface $date_reele_intervention): static
-    {
-        $this->date_reele_intervention = $date_reele_intervention;
-
-        return $this;
-    }
-
     public function getDateFin(): ?\DateTimeInterface
     {
         return $this->date_fin;
@@ -99,6 +70,45 @@ class Intervention
     public function setDateFin(\DateTimeInterface $date_fin): static
     {
         $this->date_fin = $date_fin;
+
+        return $this;
+    }
+
+    public function getAffectation(): ?AffecterDemande
+    {
+        return $this->affectation;
+    }
+
+    public function setAffectation(?AffecterDemande $affectation): static
+    {
+        $this->affectation = $affectation;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Tache>
+     */
+    public function getTaches(): Collection
+    {
+        return $this->taches;
+    }
+
+    public function addTach(Tache $tach): static
+    {
+        if (!$this->taches->contains($tach)) {
+            $this->taches->add($tach);
+            $tach->addIntervention($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTach(Tache $tach): static
+    {
+        if ($this->taches->removeElement($tach)) {
+            $tach->removeIntervention($this);
+        }
 
         return $this;
     }
