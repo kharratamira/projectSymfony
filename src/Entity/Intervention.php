@@ -23,8 +23,8 @@ class Intervention
 
     
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private ?\DateTimeInterface $date_fin = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface $dateFin = null;
 
     #[ORM\OneToOne(inversedBy: 'intervention', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
@@ -64,12 +64,12 @@ class Intervention
 
     public function getDateFin(): ?\DateTimeInterface
     {
-        return $this->date_fin;
+        return $this->dateFin;
     }
 
     public function setDateFin(\DateTimeInterface $date_fin): static
     {
-        $this->date_fin = $date_fin;
+        $this->dateFin = $date_fin;
 
         return $this;
     }

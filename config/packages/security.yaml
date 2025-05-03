@@ -55,7 +55,8 @@ security:
                 password_parameter: password
                 enable_csrf: true
             logout:
-                path: api_logout_client        
+                path: api_logout_client  
+                      
                 # where to redirect after logout
                 # target: app_any_route
             # activate different ways to authenticate
@@ -77,6 +78,7 @@ security:
          - { path: ^/client, roles: ROLE_CLIENT }
          - { path: ^/api/login_client/, roles: ROLE_CLIENT }
          - { path: ^/api/singup_client/, roles: ROLE_CLIENT }
+         - { path: ^/interventions, roles: [ROLE_CLIENT, ROLE_ADMIN] }
 
 when@test:
     security:
