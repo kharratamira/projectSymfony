@@ -32,11 +32,19 @@ class Client extends User
     #[ORM\Column(type: 'string', length: 255)]
     #[Groups(['client:read', 'demande:read'])]
     private ?string $entreprise = null;
+
+    /**
+     * @var Collection<int, DemandeContrat>
+     */
+    #[ORM\OneToMany(targetEntity: DemandeContrat::class, mappedBy: 'client')]
+    private Collection $demandeContrats;
+
    
     
     public function __construct()
     {
         $this->demandeInterventions = new ArrayCollection();
+        $this->demandeContrats = new ArrayCollection();
     }
 
     
@@ -102,6 +110,38 @@ class Client extends User
 
         return $this;
     }
+
+    /**
+     * @return Collection<int, DemandeContrat>
+     */
+    public function getDemandeContrats(): Collection
+    {
+        return $this->demandeContrats;
+    }
+
+    public function addDemandeContrat(DemandeContrat $demandeContrat): static
+    {
+        if (!$this->demandeContrats->contains($demandeContrat)) {
+            $this->demandeContrats->add($demandeContrat);
+            $demandeContrat->setClient($this);
+        }
+
+        return $this;
+    }
+
+    public function removeDemandeContrat(DemandeContrat $demandeContrat): static
+    {
+        if ($this->demandeContrats->removeElement($demandeContrat)) {
+            // set the owning side to null (unless already changed)
+            if ($demandeContrat->getClient() === $this) {
+                $demandeContrat->setClient(null);
+            }
+        }
+
+        return $this;
+    }
+
+   
 
 
     

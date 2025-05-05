@@ -37,14 +37,41 @@ public function findAllInterventions(): array
         ->join('a.demande', 'd')
         ->join('d.client', 'c')
         ->join('a.technicien', 't')
-        ->orderBy('i.dateFin', 'DESC') // Trier par date de fin décroissante
+        ->orderBy('i.id', 'DESC') // Trier par date de fin décroissante
         ->getQuery()
         ->getResult();
 }
 
-public function findInterventionsByClientEmail(string $email): array
+// public function findInterventionsByClientEmail(string $email): array
+// {
+//     return $this->createQueryBuilder('i')
+//         ->select(
+//             'i.id AS intervention_id',
+//             'i.dateFin AS intervention_date_fin',
+//             'i.observation AS intervention_observation',
+//             'a.datePrevu AS affectation_date_prevu',
+//             'd.id AS demande_id',
+//             'd.description AS demande_description',
+//             'c.entreprise AS client_entreprise',
+//             'c.nom AS client_nom',
+//             'c.prenom AS client_prenom',
+//             't.nom AS technicien_nom',
+//             't.prenom AS technicien_prenom'
+//         )
+//         ->join('i.affectation', 'a')
+//         ->join('a.demande', 'd')
+//         ->join('d.client', 'c')
+//         ->join('a.technicien', 't')
+//         ->where('c.email = :email')
+//         ->setParameter('email', $email)
+//         ->orderBy('i.dateFin', 'DESC') // Trier par date de fin décroissante
+//         ->getQuery()
+//         ->getResult();
+// }
+
+public function findInterventionsByEmail(string $email, string $role): array
 {
-    return $this->createQueryBuilder('i')
+    $queryBuilder = $this->createQueryBuilder('i')
         ->select(
             'i.id AS intervention_id',
             'i.dateFin AS intervention_date_fin',
@@ -61,10 +88,20 @@ public function findInterventionsByClientEmail(string $email): array
         ->join('i.affectation', 'a')
         ->join('a.demande', 'd')
         ->join('d.client', 'c')
-        ->join('a.technicien', 't')
-        ->where('c.email = :email')
+        ->join('a.technicien', 't');
+
+    // Ajouter une condition en fonction du rôle
+    if ($role === 'ROLE_CLIENT') {
+        $queryBuilder->where('c.email = :email');
+    } elseif ($role === 'ROLE_TECHNICIEN') {
+        $queryBuilder->where('t.email = :email');
+    } else {
+        throw new \InvalidArgumentException('Rôle non valide.');
+    }
+
+    return $queryBuilder
         ->setParameter('email', $email)
-        ->orderBy('i.dateFin', 'DESC') // Trier par date de fin décroissante
+        ->orderBy('i.id', 'DESC') // Trier par date de fin décroissante
         ->getQuery()
         ->getResult();
 }

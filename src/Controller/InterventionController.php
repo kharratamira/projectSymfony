@@ -103,20 +103,23 @@ public function getAllInterventions(InterventionRepository $interventionReposito
     ]);
 }
 
-#[Route('/getClientInterventions', name: 'get_client_interventions', methods: ['GET'])]
-public function getClientInterventions(
+#[Route('/getInterventionsByEmail', name: 'get_interventions_by_email', methods: ['GET'])]
+public function getInterventionsByEmail(
     Request $request,
     InterventionRepository $interventionRepository
 ): JsonResponse {
-    // Récupérer l'email du client connecté depuis la requête
     $email = $request->query->get('email');
+    $role = $request->query->get('role'); // ROLE_CLIENT ou ROLE_TECHNICIEN
 
-    if (!$email) {
-        return $this->json(['status' => 'error', 'message' => 'Email requis.'], Response::HTTP_BAD_REQUEST);
+    if (!$email || !$role) {
+        return $this->json(['status' => 'error', 'message' => 'Email et rôle requis.'], Response::HTTP_BAD_REQUEST);
     }
 
-    // Récupérer les interventions pour le client
-    $interventions = $interventionRepository->findInterventionsByClientEmail($email);
+    try {
+        $interventions = $interventionRepository->findInterventionsByEmail($email, $role);
+    } catch (\InvalidArgumentException $e) {
+        return $this->json(['status' => 'error', 'message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+    }
 
     // Formater les données pour la réponse JSON
     $response = [];
@@ -129,6 +132,7 @@ public function getClientInterventions(
                 'prix' => $tache->getPrixTache(),
             ];
         }
+
         $response[] = [
             'intervention_id' => $intervention['intervention_id'],
             'date_fin' => $intervention['intervention_date_fin'] ? $intervention['intervention_date_fin']->format('Y-m-d H:i:s') : null,
@@ -157,86 +161,51 @@ public function getClientInterventions(
         'data' => $response
     ]);
 }
-// #[Route('/interventions', name: 'get_interventions', methods: ['GET'])]
-// public function getInterventions(
-//     Request $request,
-//     InterventionRepository $interventionRepository
-// ): JsonResponse {
-//     $user = $this->getUser();
 
-//     if (!$user) {
-//         return $this->json([
-//             'status' => 'error',
-//             'message' => 'Unauthorized'
-//         ], JsonResponse::HTTP_UNAUTHORIZED);
-//     }
+#[Route('/updateIntervention/{id}', name: 'update_intervention', methods: ['PUT'])]
+public function updateIntervention(
+    int $id,
+    Request $request,
+    InterventionRepository $interventionRepository,
+    TacheRepository $tacheRepository,
+    EntityManagerInterface $entityManager
+): JsonResponse {
+    // Récupérer l'intervention par son ID
+    $intervention = $interventionRepository->find($id);
 
-//     // ADMIN: récupère tout
-//     if ($this->isGranted('ROLE_ADMIN')) {
-//         $interventions = $interventionRepository->findAllInterventions();
-//     }
-//     // CLIENT: récupère seulement ses interventions
-//     else if ($this->isGranted('ROLE_CLIENT')) {
-//         $email = $request->query->get('email');
-//         if (!$email) {
-//             return $this->json([
-//                 'status' => 'error',
-//                 'message' => 'Email manquant pour le client'
-//             ], JsonResponse::HTTP_BAD_REQUEST);
-//         }
-//         $interventions = $interventionRepository->findInterventionsByClientEmail($email);
-//     } else {
-//         return $this->json([
-//             'status' => 'error',
-//             'message' => 'Access denied'
-//         ], JsonResponse::HTTP_FORBIDDEN);
-//     }
+    if (!$intervention) {
+        return $this->json(['status' => 'error', 'message' => 'Intervention non trouvée.'], JsonResponse::HTTP_NOT_FOUND);
+    }
 
-//     $formatted = $this->formatInterventionResponse($interventions, $interventionRepository);
+    // Récupérer les données de la requête
+    $data = json_decode($request->getContent(), true);
 
-//     return $this->json([
-//         'status' => 'success',
-//         'data' => $formatted
-//     ]);
-// }
+    
 
-// private function formatInterventionResponse(array $interventions, InterventionRepository $repo): array
-// {
-//     $response = [];
+        
+    // Mettre à jour l'observation
+    if (isset($data['observation'])) {
+        $intervention->setObservation($data['observation']);
+    }
 
-//     foreach ($interventions as $intervention) {
-//         $entity = $repo->find($intervention['intervention_id']);
-//         $taches = [];
+    // Mettre à jour les tâches
+    if (isset($data['taches']) && is_array($data['taches'])) {
+        // Supprimer les tâches existantes
+        foreach ($intervention->getTaches() as $tache) {
+            $intervention->removeTach($tache);
+        }
 
-//         foreach ($entity->getTaches() as $tache) {
-//             $taches[] = [
-//                 'tache' => $tache->getTache(),
-//                 'prix' => $tache->getPrixTache(),
-//             ];
-//         }
+        // Ajouter les nouvelles tâches
+        foreach ($data['taches'] as $tacheId) {
+            $tache = $tacheRepository->find($tacheId);
+            if ($tache) {
+                $intervention->addTach($tache);
+            }
+        }
+    }
 
-//         $response[] = [
-//             'intervention_id' => $intervention['intervention_id'],
-//             'date_fin' => $intervention['intervention_date_fin']?->format('Y-m-d H:i:s'),
-//             'observation' => $intervention['intervention_observation'],
-//             'affectation_date_prevu' => $intervention['affectation_date_prevu']?->format('Y-m-d H:i:s'),
-//             'demande' => [
-//                 'id' => $intervention['demande_id'],
-//                 'description' => $intervention['demande_description'],
-//             ],
-//             'client' => [
-//                 'nom' => $intervention['client_nom'],
-//                 'prenom' => $intervention['client_prenom'],
-//             ],
-//             'technicien' => [
-//                 'nom' => $intervention['technicien_nom'],
-//                 'prenom' => $intervention['technicien_prenom'],
-//             ],
-//             'taches' => $taches,
-//         ];
-//     }
+    // Sauvegarder les modifications
+    $entityManager->flush();
 
-//     return $response;
-// }
-
-}
+    return $this->json(['status' => 'success', 'message' => 'Intervention mise à jour avec succès.']);
+}}
