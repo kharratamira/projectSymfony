@@ -4,9 +4,12 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Entity\Client;
+use App\Entity\StatutDemande;
 use App\Entity\DemandeContrat;
 use App\Repository\ClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use App\Repository\DemandeContratRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -91,12 +94,13 @@ final class DemandeContratController extends AbstractController{
         if (!$description) {
             return $this->json(['error' => 'La description est requise.'], 400);
         }
-    
+        
         // Créer la demande de contrat
         $demandeContrat = new DemandeContrat();
         $demandeContrat->setClient($client)
-                       ->setDateDemande(new \DateTime()) // Date système
-                       ->setDescription($description);
+                       ->setDateDemande(new \DateTime()) 
+                       ->setDescription($description)
+                       ->setDateAction(new \DateTime()); // Date actuelle
     
         $em->persist($demandeContrat);
         $em->flush();
@@ -107,12 +111,92 @@ final class DemandeContratController extends AbstractController{
             'id' => $demandeContrat->getId(),
             'description' => $demandeContrat->getDescription(),
             'date_demande' => $demandeContrat->getDateDemande()->format('Y-m-d H:i:s'),
+            'statut' => $demandeContrat->getStatut()->value,
+
             'client' => [
                 'id' => $client->getId(),
                 'nom' => $client->getNom(),
                 'prenom' => $client->getPrenom(),
             ],
         
+        ]);
+    }
+   // Pour /getAllDemandesContrat
+#[Route('/getAllDemandesContrat', name: 'api_getAllDemandesContrat', methods: ['GET'])]
+public function getAllDemandesContrat(DemandeContratRepository $demandeContratRepository): JsonResponse
+{
+    $demandes = $demandeContratRepository->findAllDemande();
+
+    if (empty($demandes)) {
+        return $this->json([
+            'status' => 'success',
+            'message' => 'Aucune demande trouvée',
+            'data' => []
+        ]);
+    }
+
+    $demandeData = array_map(function($demande) {
+        return [
+            'id' => $demande->getId(),
+            'description' => $demande->getDescription(),
+            'statut' => $demande->getStatut()->value,
+            'client' => [
+                'id' => $demande->getClient()->getId(),
+                'adresse' => $demande->getClient()->getAdresse(),
+                'entreprise' => $demande->getClient()->getEntreprise(),
+                'email' => $demande->getClient()->getEmail(),
+            ],
+            'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
+            'actionDate' => $demande->getDateAction() ? $demande->getDateAction()->format('Y-m-d H:i:s') : null,
+        ];
+    }, $demandes);
+
+    return $this->json([
+        'status' => 'success',
+        'data' => $demandeData
+    ]);
+}
+    #[Route('/getDemandeContratByEmail', name: 'get_demandeContrat_by_email', methods: ['GET'])]
+    public function getInterventionsByEmail(
+        Request $request,
+        DemandeContratRepository $demandeContratRepository
+    ): JsonResponse {
+        $email = $request->query->get('email');
+        $role = $request->query->get('role'); // ROLE_CLIENT ou ROLE_TECHNICIEN
+    
+        if (!$email || !$role) {
+            return $this->json(['status' => 'error', 'message' => 'Email et rôle requis.'], Response::HTTP_BAD_REQUEST);
+        }
+    
+        try {
+            $demandes = $demandeContratRepository->findDemandeContratByEmail($email, $role);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['status' => 'error', 'message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    
+        $response = [];
+        foreach ($demandes as $demande) {
+            $client = $demande->getClient();
+    
+            $response[] = [
+                'demande_id' => $demande->getId(),
+                'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
+                'description' => $demande->getDescription(),
+                'statut' => $demande->getStatut(),
+                'action_date' => $demande->getDateAction()?->format('Y-m-d H:i:s'),
+                'client' => [
+                    'entreprise' => $client->getEntreprise(),
+                    'nom' => $client->getNom(),
+                    'prenom' => $client->getPrenom(),
+                    'email' => $client->getEmail(),
+                    'adresse' => $client->getAdresse(), 
+                ],
+            ];
+        }
+    
+        return $this->json([
+            'status' => 'success',
+            'data' => $response
         ]);
     }
 }    

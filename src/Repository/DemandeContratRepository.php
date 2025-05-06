@@ -2,9 +2,11 @@
 
 namespace App\Repository;
 
+use App\Entity\User;
+use App\Entity\Client;
 use App\Entity\DemandeContrat;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 
 /**
  * @extends ServiceEntityRepository<DemandeContrat>
@@ -16,28 +18,36 @@ class DemandeContratRepository extends ServiceEntityRepository
         parent::__construct($registry, DemandeContrat::class);
     }
 
-//    /**
-//     * @return DemanndeContrat[] Returns an array of DemanndeContrat objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('d')
-//            ->andWhere('d.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('d.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    public function findAllDemande(?User $user = null)
+{
+    $qb = $this->createQueryBuilder('d')
+               ->leftJoin('d.client', 'c')
+               ->addSelect('c')
+               ->orderBy('d.dateDemande', 'DESC');
 
-//    public function findOneBySomeField($value): ?DemanndeContrat
-//    {
-//        return $this->createQueryBuilder('d')
-//            ->andWhere('d.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+    // Si l'utilisateur est un Client (et pas admin)
+    if ($user && !in_array('ROLE_ADMIN', $user->getRoles()) && $user instanceof Client) {
+        $qb->andWhere('c.id = :clientId')
+           ->setParameter('clientId', $user->getId());
+    }
+
+    return $qb->getQuery()->getResult();
+}
+public function findDemandeContratByEmail(string $email, string $role): array
+{
+    $queryBuilder = $this->createQueryBuilder('d')
+        ->join('d.client', 'c');
+
+    if ($role === 'ROLE_CLIENT') {
+        $queryBuilder->where('c.email = :email');
+    } else {
+        throw new \InvalidArgumentException('Rôle non valide.');
+    }
+
+    return $queryBuilder
+        ->setParameter('email', $email)
+        ->orderBy('d.id', 'DESC')
+        ->getQuery()
+        ->getResult(); // retourne des objets DemandeContrat
+}
 }
