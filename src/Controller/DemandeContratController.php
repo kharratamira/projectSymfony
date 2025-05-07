@@ -18,57 +18,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 #[Route('/api')]
 final class DemandeContratController extends AbstractController{
 
-    // #[Route('/createDemandeContrat', name: 'create_demande_contrat', methods: ['POST'])]
-    // public function createDemandeContrat(
-    //     Request $request,
-    //     ClientRepository $clientRepository,
-    //     EntityManagerInterface $entityManager
-    // ): JsonResponse {
-    //     // Récupérer l'ID du client connecté depuis la session ou le token
-    //     $clientId = $request->getSession()->get('client_id'); // Assurez-vous que l'ID du client est stocké dans la session
-    
-    //     if (!$clientId) {
-    //         return $this->json(['status' => 'error', 'message' => 'Client non connecté.'], JsonResponse::HTTP_UNAUTHORIZED);
-    //     }
-    
-    //     // Récupérer le client par son ID
-    //     $client = $clientRepository->find($clientId);
-    
-    //     if (!$client) {
-    //         return $this->json(['status' => 'error', 'message' => 'Client introuvable.'], JsonResponse::HTTP_NOT_FOUND);
-    //     }
-    
-    //     // Récupérer les données de la requête
-    //     $data = json_decode($request->getContent(), true);
-    
-    //     if (!isset($data['description']) || empty($data['description'])) {
-    //         return $this->json(['status' => 'error', 'message' => 'La description est requise.'], JsonResponse::HTTP_BAD_REQUEST);
-    //     }
-    
-    //     // Créer une nouvelle demande de contrat
-    //     $demandeContrat = new DemandeContrat();
-    //     $demandeContrat->setDescription($data['description']);
-    //     $demandeContrat->setDateDemande(new \DateTime()); // Date actuelle
-    //     $demandeContrat->setClient($client);
-    
-    //     // Sauvegarder la demande de contrat
-    //     $entityManager->persist($demandeContrat);
-    //     $entityManager->flush();
-    
-    //     return $this->json([
-    //         'status' => 'success',
-    //         'message' => 'Demande de contrat créée avec succès.',
-    //         'data' => [
-    //             'id' => $demandeContrat->getId(),
-    //             'description' => $demandeContrat->getDescription(),
-    //             'date_demande' => $demandeContrat->getDateDemande()->format('Y-m-d H:i:s'),
-    //             'client' => [
-    //                 'id' => $client->getId(),
-    //                 'nom' => $client->getNom(),
-    //                 'prenom' => $client->getPrenom(),
-    //             ],
-    //         ],
-    //     ]);
+   
     #[Route('/createDemandeContrat', name: 'create_demande_contrat', methods: ['POST'])]
     public function create(Request $request, EntityManagerInterface $em): Response
     {
@@ -179,7 +129,7 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
             $client = $demande->getClient();
     
             $response[] = [
-                'demande_id' => $demande->getId(),
+                'id' => $demande->getId(),
                 'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
                 'description' => $demande->getDescription(),
                 'statut' => $demande->getStatut(),
@@ -199,4 +149,84 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
             'data' => $response
         ]);
     }
+    #[Route('/updateDemandeContrat/{id}', name: 'update_demande_contrat', methods: ['PUT'])]
+    public function updateIntervention(
+    int $id,
+    Request $request,
+    DemandeContratRepository $demandeContratRepository,
+    EntityManagerInterface $entityManager
+): JsonResponse {
+    // Récupérer l'intervention par son ID
+    $demandeContrat = $demandeContratRepository->find($id);
+
+    if (!$demandeContrat) {
+        return $this->json(['status' => 'error', 'message' => 'Demande Contrat non trouvée.'], JsonResponse::HTTP_NOT_FOUND);
+    }
+
+    // Récupérer les données de la requête
+    $data = json_decode($request->getContent(), true);
+
+    
+
+        
+    // Mettre à jour l'observation
+    if (isset($data['description'])) {
+        $demandeContrat->setDescription($data['description']);
+    }
+
+    $entityManager->flush();
+
+    return $this->json(['status' => 'success', 'message' => 'Intervention mise à jour avec succès.']);
+}
+
+#[Route('/acceptDemandecontrat/{id}', name: 'api_acceptDemandeContrat', methods: ['PUT'], requirements: ['id' => '\d+'])]
+public function acceptDemande(int $id, EntityManagerInterface $em,DemandeContratRepository $demandeContratRepository ): JsonResponse
+{
+    // Retrieve the demande by its ID
+    $demande = $demandeContratRepository->find($id);
+
+    if (!$demande) {
+        return $this->json(['message' => 'Demande not found.'], 404);
+    }
+
+    // Change the status to 'Accepted' (Assuming 'ACCEPTED' is a valid status in StatutDemande)
+    try {
+        $statut = StatutDemande::Accepter; // Replace this with the correct enum value
+        $demande->setStatut($statut);
+        $demande->setDateAction(new \DateTime());
+
+        $em->persist($demande);
+        $em->flush();
+
+        return $this->json(['message' => 'Demande contrat accepted successfully.']);
+    } catch (\Exception $e) {
+        return $this->json(['message' => 'An error occurred while accepting the demande contrat.'], 500);
+    }
+}
+
+#[Route('/cancelDemandeContrat/{id}', name: 'api_cancelDemandeContart', methods: ['PUT'], requirements: ['id' => '\d+'])]
+public function cancelDemande(int $id, EntityManagerInterface $em ,DemandeContratRepository $demandeContratRepository): JsonResponse
+{
+    // Retrieve the demande by its ID
+    $demande = $demandeContratRepository->find($id);
+
+    if (!$demande) {
+        return $this->json(['message' => 'Demande not found.'], 404);
+    }
+
+    // Change the status to 'Cancelled' (Assuming 'CANCELLED' is a valid status in StatutDemande)
+    try {
+        $statut = StatutDemande::ANNULEE; // Replace this with the correct enum value
+        $demande->setStatut($statut);
+        $demande->setDateAction(new \DateTime());
+
+        $em->persist($demande);
+        $em->flush();
+
+        return $this->json(['message' => 'Demande contart cancelled successfully.']);
+    } catch (\Exception $e) {
+        return $this->json(['message' => 'An error occurred while cancelling the demande contrat.'], 500);
+    }
+}
+
 }    

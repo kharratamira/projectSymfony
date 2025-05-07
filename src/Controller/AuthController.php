@@ -156,7 +156,7 @@ final class AuthController extends AbstractController
            $notif = new Notification();
            $notif->setTitre('Bienvenue !');
            $notif->setMessage('Votre compte a été créé avec succès.');
-           $notif->setIsRead(false);
+           $notif->setIsRead(isRead: false);
            $notif->setCreatedAt(new \DateTimeImmutable());
            $notif->setUsers($user);
            $entityManager->persist($notif);

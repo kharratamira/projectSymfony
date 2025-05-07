@@ -206,17 +206,6 @@ public function saveDemande(
         }
         
     
-        // Handle the statut update (ensure valid values)
-        // if (isset($data['statut'])) {
-        //     try {
-        //         $statut = StatutDemande::from($data['statut']); // Assuming StatutDemande is an enum
-        //         $demande->setStatut($statut);
-        //     } catch (\ValueError $e) {
-        //         return new JsonResponse([
-        //             'error' => 'Statut invalide. Les valeurs autorisées sont : ' . implode(', ', StatutDemande::getValues())
-        //         ], JsonResponse::HTTP_BAD_REQUEST);
-        //     }
-        // }
     
         // Optionally update associated client data
         if (isset($data['client'])) {
