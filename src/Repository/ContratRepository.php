@@ -2,9 +2,11 @@
 
 namespace App\Repository;
 
+use App\Entity\User;
+use App\Entity\Client;
 use App\Entity\Contrat;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 
 /**
  * @extends ServiceEntityRepository<Contrat>
@@ -16,28 +18,44 @@ class ContratRepository extends ServiceEntityRepository
         parent::__construct($registry, Contrat::class);
     }
 
-//    /**
-//     * @return Contrat[] Returns an array of Contrat objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('c')
-//            ->andWhere('c.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('c.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+ public function findAllContrat(?User $user = null)
+{
+    $qb = $this->createQueryBuilder('c')
+        ->leftJoin('c.demandeContrat', 'd')
+        ->leftJoin('d.client', 'cl')
+        ->addSelect('d', 'cl')
+         ->andWhere('c.statutContrat = :statut')
+        ->setParameter('statut', 'accepter')
+        ->orderBy('d.dateDemande', 'DESC');
 
-//    public function findOneBySomeField($value): ?Contrat
-//    {
-//        return $this->createQueryBuilder('c')
-//            ->andWhere('c.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+    // Filtre pour les clients (non admin)
+    if ($user && !in_array('ROLE_ADMIN', $user->getRoles())) {
+        $qb->andWhere('cl.id = :clientId')
+           ->setParameter('clientId', $user->getId());
+    }
+
+    return $qb->getQuery()->getResult();
+}
+public function findContratsByEmail(string $email, string $role): array
+{
+    $qb = $this->createQueryBuilder('c')
+        ->leftJoin('c.demandeContrat', 'd')
+        ->leftJoin('d.client', 'cl')
+        ->addSelect('d', 'cl')
+        ->orderBy('d.dateDemande', 'DESC');
+
+    if ($role === 'ROLE_CLIENT') {
+        $qb->where('cl.email = :email')
+        ->andWhere('c.statutContrat = :statut')
+           ->setParameter('statut', 'accepter');
+    } else {
+        throw new \InvalidArgumentException('Rôle non valide.');
+    }
+
+    return $qb
+        ->setParameter('email', $email)
+        ->orderBy('d.id', 'DESC')
+        ->getQuery()
+        ->getResult(); // retourne des objets DemandeContrat
+}
 }

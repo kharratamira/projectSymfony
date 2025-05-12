@@ -31,6 +31,10 @@ class DemandeContrat
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dateAction = null;
+#[ORM\OneToOne(mappedBy: 'demandeContrat')]
+private ?Contrat $contrat = null;
+    #[ORM\Column]
+    private ?bool $isGenere = null;
     public function __construct()
     {
         $this->statut = StatutDemande::EN_ATTENTE; // Statut par défaut
@@ -102,7 +106,28 @@ class DemandeContrat
 
         return $this;
     }
-    
 
+    public function isGenere(): ?bool
+    {
+        return $this->isGenere;
+    }
+
+    public function setIsGenere(bool $isGenere): static
+    {
+        $this->isGenere = $isGenere;
+
+        return $this;
+    }
+    
+public function getContrat(): ?Contrat
+{
+    return $this->contrat;
+}
+
+public function setContrat(?Contrat $contrat): static
+{
+    $this->contrat = $contrat;
+    return $this;
+}
 
 }

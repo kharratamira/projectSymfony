@@ -162,7 +162,7 @@ final class AuthController extends AbstractController
            $entityManager->persist($notif);
            $email = (new Email())
     ->from('amirakharrat541@gmail.com')
-    ->to($user->getEmail())
+    ->to('amirakharrat541@gmail.com')
     ->subject('Test Symfony Mailer')
     ->text('Ceci est un test depuis Symfony');
 
@@ -389,44 +389,23 @@ public function updateCommercial(int $id, Request $request, UserRepository $user
     return new JsonResponse(['message' => 'Commercial mis à jour avec succès'], 200);
 }
 
-#[Route('/test-mail', name: 'api_test_mail', methods: ['POST'])]
-public function sendMailTest(Request $request, MailerInterface $mailer): JsonResponse
+#[Route('/mail-test')]
+public function testMail(MailerInterface $mailer)
 {
-    $data = json_decode($request->getContent(), true);
-    $recipient = $data['email'] ?? null;
-    $nom = $data['nom'] ?? 'Utilisateur';
-
-    if (!$recipient) {
-        return new JsonResponse(['message' => 'Adresse email requise'], 400);
-    }
+    $email = (new Email())
+        ->from('amirakharrat541@gmail.com')
+        ->to('amirakharrat541@gmail.com')
+         ->subject('Bienvenue sur notre site')
+    ->html('<h1>Bienvenue !</h1><p>Merci pour votre inscription.</p>');
 
     try {
-        $email = (new Email())
-            ->from('amirakharrat541@gmail.com') // 🔁 Remplace avec ton email
-            ->to($recipient)
-            ->subject('Test d\'envoi d\'email')
-            ->html("<p>Bonjour <strong>$nom</strong>,<br> Ceci est un test depuis Postman via Symfony.</p>");
-
         $mailer->send($email);
-
-        return new JsonResponse(['message' => 'Email envoyé avec succès']);
+        return new Response('Email envoyé');
     } catch (\Exception $e) {
-        return new JsonResponse(['message' => 'Erreur lors de l\'envoi', 'error' => $e->getMessage()], 500);
+        return new Response('Erreur: ' . $e->getMessage());
     }
 }
-#[Route('/send-test-email', name: 'send_test_email', methods: ['GET'])]
-    public function sendMail(MailerInterface $mailer): JsonResponse
-    {
-        $email = (new Email())
-            ->from('tonadresse@gmail.com')
-            ->to('destination@example.com')
-            ->subject('Test Email')
-            ->text('This is a test email sent from Symfony.');
 
-        $mailer->send($email);
-
-        return $this->json(['message' => 'Email sent successfully']);
-    }
 }
 
 

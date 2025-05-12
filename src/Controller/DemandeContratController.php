@@ -50,7 +50,9 @@ final class DemandeContratController extends AbstractController{
         $demandeContrat->setClient($client)
                        ->setDateDemande(new \DateTime()) 
                        ->setDescription($description)
-                       ->setDateAction(new \DateTime()); // Date actuelle
+                       ->setDateAction(new \DateTime())
+                       ->setIsGenere(false);
+                        // Date actuelle
     
         $em->persist($demandeContrat);
         $em->flush();
@@ -62,6 +64,8 @@ final class DemandeContratController extends AbstractController{
             'description' => $demandeContrat->getDescription(),
             'date_demande' => $demandeContrat->getDateDemande()->format('Y-m-d H:i:s'),
             'statut' => $demandeContrat->getStatut()->value,
+            'isGenere' => $demandeContrat->isGenere(),
+            
 
             'client' => [
                 'id' => $client->getId(),
@@ -90,14 +94,27 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
             'id' => $demande->getId(),
             'description' => $demande->getDescription(),
             'statut' => $demande->getStatut()->value,
+            
             'client' => [
                 'id' => $demande->getClient()->getId(),
                 'adresse' => $demande->getClient()->getAdresse(),
                 'entreprise' => $demande->getClient()->getEntreprise(),
                 'email' => $demande->getClient()->getEmail(),
+                'nom' => $demande->getClient()->getNom(),
+                'prenom' => $demande->getClient()->getPrenom(),
+
             ],
+            'contrat' => $demande->getContrat() ? [
+                'id' => $demande->getContrat()->getId(),
+                'num' => $demande->getContrat()->getNumContrat(),
+                'dateDebut' => $demande->getContrat()->getDateDebut()->format('Y-m-d'),
+                'dateFin' => $demande->getContrat()->getDateFin()->format('Y-m-d'),
+                'statut' => $demande->getContrat()->getStatutContart()?->value,
+            ] : null,
+
             'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
             'actionDate' => $demande->getDateAction() ? $demande->getDateAction()->format('Y-m-d H:i:s') : null,
+            'isGenere' => $demande->isGenere(),
         ];
     }, $demandes);
 
@@ -107,7 +124,7 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
     ]);
 }
     #[Route('/getDemandeContratByEmail', name: 'get_demandeContrat_by_email', methods: ['GET'])]
-    public function getInterventionsByEmail(
+    public function getDemandeContratByEmail(
         Request $request,
         DemandeContratRepository $demandeContratRepository
     ): JsonResponse {
@@ -134,6 +151,7 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
                 'description' => $demande->getDescription(),
                 'statut' => $demande->getStatut(),
                 'action_date' => $demande->getDateAction()?->format('Y-m-d H:i:s'),
+                'isGenere' => $demande->isGenere(),
                 'client' => [
                     'entreprise' => $client->getEntreprise(),
                     'nom' => $client->getNom(),
@@ -141,6 +159,14 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
                     'email' => $client->getEmail(),
                     'adresse' => $client->getAdresse(), 
                 ],
+                'contrat' => $demande->getContrat() ? [
+    'id' => $demande->getContrat()->getId(),
+    'num' => $demande->getContrat()->getNumContrat(),
+    'dateDebut' => $demande->getContrat()->getDateDebut()->format('Y-m-d'),
+    'dateFin' => $demande->getContrat()->getDateFin()->format('Y-m-d'),
+    'statut' => $demande->getContrat()->getStatutContart()?->value,
+] : null,
+
             ];
         }
     
