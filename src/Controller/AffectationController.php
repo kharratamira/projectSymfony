@@ -71,7 +71,12 @@ final class AffectationController extends AbstractController{
                     Response::HTTP_BAD_REQUEST
                 );
             }
-           
+            $hour = (int)$datePrevu->format('H');
+        if ($hour < 8 || $hour >= 17) {
+            return $this->json([
+                'error' => 'L’heure de l’affectation doit être entre 08:00 et 17:00.'
+            ], Response::HTTP_BAD_REQUEST);
+        }
             $existingAffectations = $affectationRepository->getAffectation([
                 'technicien_id' => $technicien->getId(),
                 'date_prevu' => $datePrevu
@@ -113,6 +118,33 @@ final class AffectationController extends AbstractController{
                 Response::HTTP_CONFLICT
             );
         }
+                $startOfDay = (clone $datePrevu)->setTime(0, 0, 0);
+        $endOfDay = (clone $datePrevu)->setTime(23, 59, 59);
+        $affectationsDuJour = $affectationRepository->createQueryBuilder('a')
+            ->where('a.technicien = :technicien')
+            ->andWhere('a.datePrevu BETWEEN :start AND :end')
+            ->setParameter('technicien', $technicien)
+            ->setParameter('start', $startOfDay)
+            ->setParameter('end', $endOfDay)
+            ->getQuery()
+            ->getResult();
+
+        if (count($affectationsDuJour) >= 8) {
+            return $this->json([
+                'error' => 'Le technicien ne peut pas avoir plus de 8 affectations par jour.'
+            ], Response::HTTP_CONFLICT);
+        }
+
+        // Vérifie l'espacement d’au moins 1h entre deux affectations
+        foreach ($affectationsDuJour as $affectationExistante) {
+            $diffInSeconds = abs($affectationExistante->getDatePrevu()->getTimestamp() - $datePrevu->getTimestamp());
+            if ($diffInSeconds < 3600) { // moins d'une heure
+                return $this->json([
+                    'error' => 'Il doit y avoir au moins 1 heure entre deux affectations.'
+                ], Response::HTTP_CONFLICT);
+            }
+        }
+
 
             // 6. Vérification existence affectation existante pour la demande
             if (!$demande->getAffecterDemandes()->isEmpty()) {
@@ -174,7 +206,7 @@ final class AffectationController extends AbstractController{
                 'date_prevu' => $request->query->get('date_prevu') 
                     ? new \DateTime($request->query->get('date_prevu')) 
                     : null,
-                    'statuts' => ['EN_ATTENTE', 'EN_COURS']
+                    'statuts' => ['EN_ATTENTE', 'EN_COURS','TERMINEE']
                     
             ];
             
@@ -184,9 +216,10 @@ final class AffectationController extends AbstractController{
             );
             
             $qb = $autorisationSortieRepository->createQueryBuilder('a')
-            ->select('a.id, a.dateDebut, a.dateFin')
+            ->select('a.id, a.dateDebut, a.dateFin, a.raison')
             ->where('a.statutAutorisation = :statut')
             ->setParameter('statut', 'ACCEPTER');
+
 
         if (!empty($filters['technicien_id'])) {
             $qb->andWhere('a.technicien = :technicien_id')
@@ -230,14 +263,17 @@ public function getAffectationsTechnicien(
     ->orderBy('a.dateDebut', 'DESC') // Trier par dateDebut en ordre décroissant
     ->getQuery()
     ->getResult();
+    
     return $this->json([
         'affectations' => $affectations,
+
         'autorisations' => array_map(function ($auto) {
             return [
                 'id' => $auto->getId(),
                 'raison' => $auto->getRaison(),
-                'dateDebut' => $auto->getDateDebut()->format('Y-m-d'),
-                'dateFin' => $auto->getDateFin()->format('Y-m-d'),
+                'dateDebut' => $auto->getDateDebut()->format('Y-m-d H:i:s'),
+                 'dateFin' => $auto->getDateFin()->format('Y-m-d H:i:s'),
+
             ];
         }, $autorisations)
     ]);
