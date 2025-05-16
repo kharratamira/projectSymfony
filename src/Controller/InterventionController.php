@@ -74,7 +74,21 @@ public function getAllInterventions(InterventionRepository $interventionReposito
                 'prix' => $tache->getPrixTache(),
             ];
         }
+ $factureEntity = $interventionEntity->getFacture(); // Assure-toi que Intervention a getFacture()
 
+        $facture = null;
+        if ($factureEntity) {
+            $facture = [
+                'numFacture' => $factureEntity->getNumFacture(),
+                'dateEmission' => $factureEntity->getDateEmission()?->format('Y-m-d H:i:s'),
+                'dateEcheance' => $factureEntity->getDateEcheance()?->format('Y-m-d'),
+                'montantHTVA' => $factureEntity->getMontantHTVA(),
+                'TVA' => $factureEntity->getTVA(),
+                'montantTTC' => $factureEntity->getMontantTTC(),
+                'remise' => $factureEntity->getRemise(),
+                'statut' => $factureEntity->getStatut()->value,
+            ];
+        }
         $response[] = [
             'intervention_id' => $intervention['intervention_id'],
             'date_fin' => $intervention['intervention_date_fin'] ? $intervention['intervention_date_fin']->format('Y-m-d H:i:s') : null,
@@ -93,6 +107,7 @@ public function getAllInterventions(InterventionRepository $interventionReposito
                 'nom' => $intervention['technicien_nom'],
                 'prenom' => $intervention['technicien_prenom'],
             ],
+            'facture' => $facture,
             'taches' => $taches,
         ];
     }

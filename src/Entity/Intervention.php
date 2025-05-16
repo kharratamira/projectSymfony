@@ -38,11 +38,24 @@ class Intervention
     private Collection $taches;
 
    
-
+#[ORM\OneToOne(mappedBy: 'intervention', targetEntity: Facture::class)]
+private ?Facture $facture = null;
     public function __construct()
     {
         $this->taches = new ArrayCollection();
     }
+
+
+public function getFacture(): ?Facture
+{
+    return $this->facture;
+}
+
+public function setFacture(?Facture $facture): static
+{
+    $this->facture = $facture;
+    return $this;
+}
 
     public function getId(): ?int
     {
