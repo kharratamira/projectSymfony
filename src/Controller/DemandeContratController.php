@@ -4,13 +4,17 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Entity\Client;
+use App\Entity\Notification;
+use Psr\Log\LoggerInterface;
 use App\Entity\StatutDemande;
 use App\Entity\DemandeContrat;
+use Symfony\Component\Mime\Email;
 use App\Repository\ClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use App\Repository\DemandeContratRepository;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,7 +24,8 @@ final class DemandeContratController extends AbstractController{
 
    
     #[Route('/createDemandeContrat', name: 'create_demande_contrat', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em): Response
+    public function create(Request $request, EntityManagerInterface $em, MailerInterface $mailer,
+    LoggerInterface $logger): Response
     {
     
     
@@ -55,7 +60,31 @@ final class DemandeContratController extends AbstractController{
                         // Date actuelle
     
         $em->persist($demandeContrat);
+         // Création de la notification
+        $notif = new Notification();
+        $notif->setTitre('Votre demande contrat a été généré')
+              ->setMessage(sprintf('Votre demande contrat %s a été créé avec succès', $demandeContrat->getDescription()))
+              ->setIsRead(false)
+              ->setCreatedAt(new \DateTimeImmutable())
+              ->setUsers($client);
+
+        $em->persist($notif);
+
+        // Envoi de l'email
+        $email = (new Email())
+            ->from('contrats@votresociete.com')
+            ->to('admin@gmail.com')
+->subject('Confirmation de votre demande de contrat #'.$demandeContrat->getId())
+            ->html($this->renderView('emails/nouveau_demandecontrat.html.twig', [
+                'client' => $client,
+                'demande' => $demandeContrat,
+            ]));
+
+        $mailer->send($email);
+        $logger->info('Email envoyé au client', ['email' => $client->getEmail()]);
+
         $em->flush();
+       
     
         return $this->json([
             'success' => true,

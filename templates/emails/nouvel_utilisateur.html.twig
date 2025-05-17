@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenue</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .credentials {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .highlight {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Bienvenue {{ user.prenom }} {{ user.nom }}</h1>
+    </div>
+    
+    <div class="content">
+        <p>Votre compte a été créé avec succès sur notre plateforme.</p>
+        
+        <div class="credentials">
+            <h3>Vos identifiants de connexion :</h3>
+            <p><strong>Email :</strong> <span class="highlight">{{ user.email }}</span></p>
+            <p><strong>Mot de passe temporaire :</strong> <span class="highlight">{{ plainPassword }}</span></p>
+        </div>
+        
+        <p>Pour des raisons de sécurité, nous vous recommandons de :</p>
+        <ol>
+            <li>Vous connecter dès maintenant</li>
+            <li>Modifier votre mot de passe</li>
+        </ol>
+        
+        <a href="{{ loginUrl }}" class="button">Se connecter</a>
+    </div>
+    
+    <div class="footer">
+        <p>Si vous n'avez pas créé ce compte, veuillez ignorer cet email.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Votre Société. Tous droits réservés.</p>
+    </div>
+</body>
+</html>

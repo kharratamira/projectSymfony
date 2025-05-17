@@ -37,6 +37,7 @@ when@test:
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
 
+
 when@prod:
     monolog:
         handlers:

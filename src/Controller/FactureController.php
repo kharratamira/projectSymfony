@@ -3,11 +3,15 @@
 namespace App\Controller;
 
 use App\Entity\Facture;
+use App\Entity\Notification;
+use Psr\Log\LoggerInterface;
 use App\Entity\statutFacture;
+use Symfony\Component\Mime\Email;
 use App\Repository\FactureRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\InterventionRepository;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,54 +19,52 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 #[Route('/api')]
 
 final class FactureController extends AbstractController{
-//    #[Route('/genererfacture/{id}', name: 'generer_facture', methods: ['POST'])]
+
+// #[Route('/genererfacture/{id}', name: 'generer_facture', methods: ['POST'])]
 // public function genererFacture(
 //     int $id,
+//     Request $request,
 //     EntityManagerInterface $em,
 //     InterventionRepository $interventionRepository
 // ): JsonResponse {
 //     $intervention = $interventionRepository->find($id);
 
 //     if (!$intervention) {
-//         return new JsonResponse(['error' => 'Intervention introuvable.'], 404);
+//         return $this->json(['error' => 'Intervention introuvable.'], 404);
 //     }
 
-//     // ✅ Récupère les tâches associées
 //     $taches = $intervention->getTaches();
-
 //     if (count($taches) === 0) {
-//         return new JsonResponse(['error' => 'Aucune tâche liée à cette intervention.'], 400);
+//         return $this->json(['error' => 'Aucune tâche liée à cette intervention.'], 400);
 //     }
 
-//     // 💰 Calcul montant HTVA
-//     $montantHTVA = 0;
-//     foreach ($taches as $tache) {
-//         $montantHTVA += $tache->getPrixTache();
-//     }
-
-//     // Exemple : TVA 20%
+//     $montantHTVA = array_reduce($taches->toArray(), fn($total, $t) => $total + $t->getPrixTache(), 0);
 //     $TVA = round($montantHTVA * 0.2, 2);
 //     $montantTTC = round($montantHTVA + $TVA, 2);
 
-//     // Génère un numéro de facture unique
-//     $numFacture = 'FAC-' . strtoupper(uniqid());
+//     $data = json_decode($request->getContent(), true);
+//     $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
+//         $montantAvecRemise = $montantTTC;
 
-//     // 📦 Création de la facture
+//     if ($remise > 0 && $remise <= 100) {
+//         $montantAvecRemise = round($montantTTC - ($montantTTC * ($remise / 100)), 2);
+//     }
+
 //     $facture = new Facture();
-//     $facture->setNumFacture($numFacture)
-//             ->setDateEmission(new \DateTime())
-//             ->setDateEcheance((new \DateTime())->modify('+30 days'))
-//             ->setMontantHTVA($montantHTVA)
-//             ->setTVA($TVA)
-//             ->setMontantTTC($montantTTC)
-//             ->setIntervention($intervention)
-//             ->setStatut(statutFacture::EN_ATTENTE)
-//             ->setRemise(0); // si applicable
+//     $facture->setNumFacture('FAC-' . strtoupper(uniqid()))
+//         ->setDateEmission(new \DateTime())
+//         ->setDateEcheance((new \DateTime())->modify('+30 days'))
+//         ->setMontantHTVA($montantHTVA)
+//         ->setTVA($TVA)
+//         ->setMontantTTC($montantAvecRemise)
+//         ->setRemise($remise)
+//         ->setStatut(statutFacture::EN_ATTENTE)
+//         ->setIntervention($intervention);
 
 //     $em->persist($facture);
 //     $em->flush();
 
-//    return $this->json([
+//     return $this->json([
 //         'numFacture' => $facture->getNumFacture(),
 //         'dateEmission' => $facture->getDateEmission()?->format('Y-m-d'),
 //         'dateEcheance' => $facture->getDateEcheance()?->format('Y-m-d'),
@@ -79,51 +81,100 @@ final class FactureController extends AbstractController{
 //             ], $facture->getIntervention()?->getTaches()->toArray() ?? [])
 //         ]
 //     ]);
+
 // }
 #[Route('/genererfacture/{id}', name: 'generer_facture', methods: ['POST'])]
 public function genererFacture(
     int $id,
     Request $request,
     EntityManagerInterface $em,
-    InterventionRepository $interventionRepository
+    InterventionRepository $interventionRepository,
+    MailerInterface $mailer,
+    LoggerInterface $logger
 ): JsonResponse {
-    $intervention = $interventionRepository->find($id);
+    try {
+        $intervention = $interventionRepository->find($id);
 
-    if (!$intervention) {
-        return $this->json(['error' => 'Intervention introuvable.'], 404);
-    }
+        if (!$intervention) {
+            return $this->json(['error' => 'Intervention introuvable.'], 404);
+        }
 
-    $taches = $intervention->getTaches();
-    if (count($taches) === 0) {
-        return $this->json(['error' => 'Aucune tâche liée à cette intervention.'], 400);
-    }
+        $taches = $intervention->getTaches();
+        if (count($taches) === 0) {
+            return $this->json(['error' => 'Aucune tâche liée à cette intervention.'], 400);
+        }
 
-    $montantHTVA = array_reduce($taches->toArray(), fn($total, $t) => $total + $t->getPrixTache(), 0);
-    $TVA = round($montantHTVA * 0.2, 2);
-    $montantTTC = round($montantHTVA + $TVA, 2);
+        // Calcul des montants
+        $montantHTVA = array_reduce($taches->toArray(), fn($total, $t) => $total + $t->getPrixTache(), 0);
+        $TVA = round($montantHTVA * 0.2, 2);
+        $montantTTC = round($montantHTVA + $TVA, 2);
 
-    $data = json_decode($request->getContent(), true);
-    $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
+        $data = json_decode($request->getContent(), true);
+        $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
+        $montantAvecRemise = $montantTTC;
 
-    if ($remise > 0 && $remise <= 100) {
-        $montantAvecRemise = round($montantTTC - ($montantTTC * ($remise / 100)), 2);
-    }
+        if ($remise > 0 && $remise <= 100) {
+            $montantAvecRemise = round($montantTTC - ($montantTTC * ($remise / 100)), 2);
+        }
 
-    $facture = new Facture();
-    $facture->setNumFacture('FAC-' . strtoupper(uniqid()))
-        ->setDateEmission(new \DateTime())
-        ->setDateEcheance((new \DateTime())->modify('+30 days'))
-        ->setMontantHTVA($montantHTVA)
-        ->setTVA($TVA)
-        ->setMontantTTC($montantAvecRemise)
-        ->setRemise($remise)
-        ->setStatut(statutFacture::EN_ATTENTE)
-        ->setIntervention($intervention);
+        // Création de la facture
+        $facture = new Facture();
+        $facture->setNumFacture('FAC-' . strtoupper(uniqid()))
+            ->setDateEmission(new \DateTime())
+            ->setDateEcheance((new \DateTime())->modify('+30 days'))
+            ->setMontantHTVA($montantHTVA)
+            ->setTVA($TVA)
+            ->setMontantTTC($montantAvecRemise)
+            ->setRemise($remise)
+            ->setStatut(StatutFacture::EN_ATTENTE)
+            ->setIntervention($intervention);
 
-    $em->persist($facture);
-    $em->flush();
+        $em->persist($facture);
 
-    return $this->json([
+        // CORRECTION: Accès au client via la relation correcte
+        $affectation = $intervention->getAffectation();
+        if (!$affectation) {
+            throw new \Exception("Aucune affectation trouvée pour cette intervention");
+        }
+
+        $demande = $affectation->getDemande(); // Nom correct de la méthode
+        if (!$demande) {
+            throw new \Exception("Aucune demande trouvée pour cette affectation");
+        }
+
+        $client = $demande->getClient();
+        if (!$client) {
+            throw new \Exception("Aucun client trouvé pour cette demande");
+        }
+
+        // Création de la notification
+        $notif = new Notification();
+        $notif->setTitre('Votre facture a été générée')
+              ->setMessage(sprintf('Votre facture %s a été créée avec succès. Montant TTC: %s Dt', 
+                  $facture->getNumFacture(), 
+                  number_format($montantAvecRemise, 2, ',', ' ')))
+              ->setIsRead(false)
+              ->setCreatedAt(new \DateTimeImmutable())
+              ->setUsers($client); // Vérifiez setUser() vs setUsers()
+
+        $em->persist($notif);
+
+        // Envoi de l'email
+        $email = (new Email())
+            ->from('test@gmail.com')
+            ->to($client->getEmail())
+            ->subject(sprintf('Facture %s générée', $facture->getNumFacture()))
+            ->html($this->renderView('emails/nouveau_Facteur.html.twig', [
+                'client' => $client,
+                'facture' => $facture,
+                'montant' => number_format($montantAvecRemise, 2, ',', ' ')
+            ]));
+
+        $mailer->send($email);
+        
+        $em->flush();
+
+        return $this->json([
         'numFacture' => $facture->getNumFacture(),
         'dateEmission' => $facture->getDateEmission()?->format('Y-m-d'),
         'dateEcheance' => $facture->getDateEcheance()?->format('Y-m-d'),
@@ -141,6 +192,17 @@ public function genererFacture(
         ]
     ]);
 
+    } catch (\Exception $e) {
+        $logger->error('Erreur génération facture', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return $this->json([
+            'error' => 'Erreur lors de la génération de la facture',
+            'details' => $e->getMessage()
+        ], 500);
+    }
 }
 #[Route('/facturepreview/{id}', name: 'facture_preview', methods: ['GET'])]
 public function previewFacture(

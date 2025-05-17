@@ -4,13 +4,18 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Entity\Technicien;
+use App\Entity\Notification;
+use Symfony\Component\Mime\Email;
 use App\Entity\AutorisationSortie;
 use App\Entity\StatutAutorisation;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Repository\AutorisationSortieRepository;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -22,7 +27,7 @@ final class AutorisationSortieController extends AbstractController
     
     
     #[Route('/Createautorisation', name: 'create_autorisation_sortie', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em): Response
+    public function create(Request $request, EntityManagerInterface $em,UserRepository $userRepository, MailerInterface $mailer,): Response
     {
         $data = json_decode($request->getContent(), true);
     
@@ -38,7 +43,7 @@ final class AutorisationSortieController extends AbstractController
         if (!$technicien) {
             return $this->json(['error' => 'Technicien introuvable'], 404);
         }
-    
+     
         $autorisation = new AutorisationSortie();
         $autorisation->setTechnicien($technicien)
                      ->setDateDebut(new \DateTime($data['dateDebut']))
@@ -46,8 +51,71 @@ final class AutorisationSortieController extends AbstractController
                      ->setRaison($data['raison']);
     
         $em->persist($autorisation);
-        $em->flush();
-    
+           // Création de la notification
+        $notif = new Notification();
+        $notif->setTitre('Nouvelle autorisation de sortie')
+              ->setMessage(sprintf(
+                  'Une nouvelle autorisation a été créée pour %s %s',
+                  $technicien->getPrenom(),
+                  $technicien->getNom()
+              ))
+              ->setIsRead(false)
+              ->setCreatedAt(new \DateTimeImmutable())
+              ->setUsers($technicien);
+
+               $notif = new Notification();
+           $notif->setTitre('Bienvenue !');
+           $notif->setMessage('Nouvelle autorisation de sortie .');
+           $notif->setIsRead(isRead: false);
+           $notif->setCreatedAt(new \DateTimeImmutable());
+           $notif->setUsers($technicien);
+           $em->persist($notif);
+           $email = (new Email())
+    ->from('amirakharrat541@gmail.com')
+->to('admin@gmail.com')
+            ->subject('Bienvenue sur notre plateforme !')
+      ->html(sprintf(
+        '<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; }
+                .highlight { color: #0066cc; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <p>Bonjour Administrateur,</p>
+            
+            <p>Une nouvelle demande d\'autorisation a été soumise :</p>
+            
+            <ul>
+                <li><strong>Technicien :</strong> <span class="highlight">%s %s</span></li>
+                <li><strong>Période :</strong> Du %s au %s</li>
+                <li><strong>Raison :</strong> %s</li>
+            </ul>
+            
+            <p>Veuillez traiter cette demande dans les plus brefs délais.</p>
+            
+            <p>Cordialement,<br>Le service technique</p>
+        </body>
+        </html>',
+        htmlspecialchars($technicien->getPrenom()),
+        htmlspecialchars($technicien->getNom()),
+        $autorisation->getDateDebut()->format('d/m/Y H:i'),
+        $autorisation->getDateFin()->format('d/m/Y H:i'),
+        htmlspecialchars($autorisation->getRaison())
+    ));
+
+
+       try {
+        $mailer->send($email);  // Send the email
+       } catch (\Exception $e) {
+           // Handle any mail sending error here
+           return new JsonResponse(['message' => 'Failed to send email', 'error' => $e->getMessage()], 500);
+       }
+
+       // Final response
+       $em->flush();
         return $this->json(['success' => true]);
     }
     

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmation de demande de contrat</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }
+        .email-container { background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .header { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+        .details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #3498db; }
+        .highlight { color: #0066cc; font-weight: bold; }
+        .footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h2>Nouvelle demande de contrat</h2>
+        </div>
+        
+        <p>Bonjour Administrateur</p>
+        
+        <p>Nous accusons réception de votre demande de contrat :</p>
+        
+        <div class="details">
+            <p><strong>Date :</strong> {{ demande.dateDemande|date('d/m/Y à H:i') }}</p>
+            <p><strong>Client :</strong> {{ client.prenom }} {{ client.nom }}</p>
+        </div>
+        
+        <p>Votre demande a bien été enregistrée sous la référence <strong>DM-{{ "%04d"|format(demande.id) }}</strong>.</p>
+        
+        <p>Nous traiterons votre demande dans les meilleurs délais.</p>
+        
+        <div class="footer">
+            <p>Ceci est un message automatique - Merci de ne pas y répondre</p>
+            <p>Cordialement,<br>Le service contrats</p>
+        </div>
+    </div>
+</body>
+</html>

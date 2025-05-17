@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Intervention Terminée</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin: 0 0 10px 0;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .cta {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #1a73e8;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .cta:hover {
+            background-color: #155ab6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Intervention Terminée</h1>
+        </div>
+        <div class="content">
+            <p class="greeting">Bonjour {{ client.nom }} {{ client.prenom }},</p>
+
+            <p>
+                Nous vous informons que l’intervention concernant votre demande a été 
+                <strong style="color: green;">terminée avec succès</strong>.
+            </p>
+
+            <p>
+                Afin d'améliorer continuellement la qualité de nos services, nous vous invitons à remplir notre formulaire de satisfaction.
+            </p>
+
+            {# <a href="https://votre-site.fr/formulaire-satisfaction" class="cta">
+                Remplir le formulaire
+            </a> #}
+
+            <p style="margin-top: 30px;">
+                Merci pour votre confiance.<br>
+                Cordialement,<br>
+                <strong>L'équipe technique</strong>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

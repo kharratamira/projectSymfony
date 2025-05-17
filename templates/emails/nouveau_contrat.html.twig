@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Votre contrat a été généré</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .content { margin: 20px 0; }
+        .details { background: #f9f9f9; padding: 15px; border-radius: 5px; }
+        .highlight { color: #0066cc; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Votre contrat a été généré</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{ client.prenom }} {{ client.nom }},</p>
+            
+            <p>Nous vous informons que votre contrat a été généré avec succès :</p>
+            
+            <div class="details">
+                <h3>Détails du contrat :</h3>
+                <p><strong>Numéro de contrat :</strong> <span class="highlight">{{ contrat.numContrat }}</span></p>
+                <p><strong>Date de début :</strong> {{ contrat.dateDebut|date('d/m/Y') }}</p>
+                <p><strong>Date de fin :</strong> {{ contrat.dateFin|date('d/m/Y') }}</p>
+                <p><strong>Montant :</strong> {{ contrat.montant }} D t</p>
+                <p><strong>Statut :</strong> En attente de signature</p>
+            </div>
+            
+            <p>Vous recevrez prochainement les documents officiels à signer.</p>
+            
+            <p>Pour toute question, n'hésitez pas à nous contacter.</p>
+        </div>
+        
+        <p>Cordialement,<br>Le service contrats de votre société</p>
+    </div>
+</body>
+</html>

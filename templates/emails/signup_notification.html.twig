@@ -1,13 +1,51 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Bienvenue {{ user.prenom }} !</title>
+    <title>Confirmation de votre demande</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .content { margin: 20px 0; }
+        .details { background: #f9f9f9; padding: 15px; border-radius: 5px; }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white !important;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Bienvenue {{ user.prenom }} {{ user.nom }} !</h2>
-    <p>Votre compte a été créé avec succès.</p>
-    <p>Vous pouvez maintenant vous connecter à notre plateforme.</p>
-    <p>Nous sommes ravis de vous compter parmi nous !</p>
+    <div class="container">
+        <div class="header">
+            <h1>Confirmation de votre demande</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{ technicien.prenom }},</p>
+            
+            <p>Votre demande d'autorisation de sortie a bien été enregistrée :</p>
+            
+            <div class="details">
+                <p><strong>Période :</strong> 
+                    Du {{ autorisation.dateDebut|date('d/m/Y H:i') }} 
+                    au {{ autorisation.dateFin|date('d/m/Y H:i') }}
+                </p>
+                <p><strong>Raison :</strong> {{ autorisation.raison }}</p>
+                <p><strong>Statut :</strong> En attente de validation</p>
+            </div>
+            
+            <p>Vous serez informé par email lorsque votre demande sera traitée.</p>
+            
+            <a href="{{ lien_espace_personnel }}" class="button">Accéder à votre espace personnel</a>
+        </div>
+        
+        <p>Cordialement,<br>Le service des Ressources Humaines</p>
+    </div>
 </body>
 </html>

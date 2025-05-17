@@ -2,13 +2,17 @@
 
 namespace App\Controller;
 
+use App\Entity\Notification;
+use Psr\Log\LoggerInterface;
 use App\Entity\AffecterDemande;
 use App\Entity\StatutAffectation;
+use Symfony\Component\Mime\Email;
 use App\Entity\StatutAutorisation;
 use App\Repository\TechnicienRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\AffecterDemandeRepository;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Repository\AutorisationSortieRepository;
@@ -27,7 +31,9 @@ final class AffectationController extends AbstractController{
         AffecterDemandeRepository $affectationRepository,
         EntityManagerInterface $em,
         ValidatorInterface $validator
-        , AutorisationSortieRepository $autorisationSortieRepository
+        , AutorisationSortieRepository $autorisationSortieRepository,
+         MailerInterface $mailer,
+    LoggerInterface $logger
     ): JsonResponse {
         try {
             // 1. Décoder les données JSON
@@ -175,6 +181,30 @@ final class AffectationController extends AbstractController{
     
             // 9. Persistance
             $em->persist($affectation);
+            $notif = new Notification();
+           $notif->setTitre('Bienvenue !');
+           $notif->setMessage('Votre compte a été créé avec succès.');
+           $notif->setIsRead(isRead: false);
+           $notif->setCreatedAt(new \DateTimeImmutable());
+           $notif->setUsers($technicien);
+
+        $em->persist($notif);
+
+        // Envoi de l'email
+        $email = (new Email())
+            ->from('test@gmail.com')
+            ->to($technicien->getEmail())
+            ->subject(sprintf('Affectation'))
+            ->html($this->renderView('emails/nouveau_Affectation.html.twig', [
+               'technicien' => $technicien,
+                'demande' => $demande,
+                'date_prevu' => $datePrevu->format('Y-m-d H:i'),
+               
+            ]));
+
+        $mailer->send($email);
+        $logger->info('Email envoyé à ' . $technicien->getEmail());
+    
             $em->flush();
     
             // 10. Message de succès

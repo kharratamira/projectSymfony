@@ -149,7 +149,7 @@ final class AuthController extends AbstractController
 
             $user->setPhoto($photoFilename);
         }
-        
+               $plainPassword = $data['password']; 
                 // On sauvegarde !
         $entityManager->persist($user);
            // Création notification
@@ -162,11 +162,33 @@ final class AuthController extends AbstractController
            $entityManager->persist($notif);
            $email = (new Email())
     ->from('amirakharrat541@gmail.com')
-    ->to('amirakharrat541@gmail.com')
-    ->subject('Test Symfony Mailer')
-    ->text('Ceci est un test depuis Symfony');
-
-
+->to($user->getEmail())
+            ->subject('Bienvenue sur notre plateforme !')
+       ->html(sprintf(
+    '<div style="font-family: \'Arial\', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; display: inline-block;">Bienvenue</h2>
+        </div>
+        
+        <p style="margin-bottom: 15px;">Bonjour <span style="color: #3498db; font-weight: 600;">%s %s</span>,</p>
+        <p style="margin-bottom: 20px;">Votre compte de connexion dans notre espace logiciel a été créé avec succès.</p>
+        
+        <div style="background-color: #ffffff; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #3498db;">
+            <p style="margin: 5px 0;"><strong>Email:</strong> <span style="color: #3498db;">%s</span></p>
+            <p style="margin: 5px 0;"><strong>Mot de passe temporaire:</strong> <span style="color: #3498db;">%s</span></p>
+        </div>
+        
+        
+        <p style="margin-top: 25px; color: #7f8c8d; font-size: 0.9em; border-top: 1px solid #e0e0e0; padding-top: 15px;">
+            Cordialement,<br>
+            <span style="color: #3498db;">L\'équipe technique</span>
+        </p>
+    </div>',
+    htmlspecialchars($user->getPrenom()),
+    htmlspecialchars($user->getNom()),
+    htmlspecialchars($user->getEmail()),
+    htmlspecialchars($plainPassword)
+       ));
 
        try {
         $mailer->send($email);  // Send the email
@@ -389,12 +411,12 @@ public function updateCommercial(int $id, Request $request, UserRepository $user
     return new JsonResponse(['message' => 'Commercial mis à jour avec succès'], 200);
 }
 
-#[Route('/mail-test')]
+#[Route('/mailtest')]
 public function testMail(MailerInterface $mailer)
 {
     $email = (new Email())
         ->from('amirakharrat541@gmail.com')
-        ->to('amirakharrat541@gmail.com')
+->to('test@example.com')
          ->subject('Bienvenue sur notre site')
     ->html('<h1>Bienvenue !</h1><p>Merci pour votre inscription.</p>');
 

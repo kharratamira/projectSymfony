@@ -40,9 +40,16 @@ class Intervention
    
 #[ORM\OneToOne(mappedBy: 'intervention', targetEntity: Facture::class)]
 private ?Facture $facture = null;
+
+/**
+ * @var Collection<int, SatisfactionClient>
+ */
+#[ORM\OneToMany(targetEntity: SatisfactionClient::class, mappedBy: 'intervention')]
+private Collection $satisfactionClients;
     public function __construct()
     {
         $this->taches = new ArrayCollection();
+        $this->satisfactionClients = new ArrayCollection();
     }
 
 
@@ -121,6 +128,36 @@ public function setFacture(?Facture $facture): static
     {
         if ($this->taches->removeElement($tach)) {
             $tach->removeIntervention($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, SatisfactionClient>
+     */
+    public function getSatisfactionClients(): Collection
+    {
+        return $this->satisfactionClients;
+    }
+
+    public function addSatisfactionClient(SatisfactionClient $satisfactionClient): static
+    {
+        if (!$this->satisfactionClients->contains($satisfactionClient)) {
+            $this->satisfactionClients->add($satisfactionClient);
+            $satisfactionClient->setIntervention($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSatisfactionClient(SatisfactionClient $satisfactionClient): static
+    {
+        if ($this->satisfactionClients->removeElement($satisfactionClient)) {
+            // set the owning side to null (unless already changed)
+            if ($satisfactionClient->getIntervention() === $this) {
+                $satisfactionClient->setIntervention(null);
+            }
         }
 
         return $this;

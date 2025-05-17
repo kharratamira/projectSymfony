@@ -3,12 +3,15 @@
 namespace App\Controller;
 
 use App\Entity\Intervention;
+use App\Entity\Notification;
 use App\Entity\StatutAffectation;
+use Symfony\Component\Mime\Email;
 use App\Repository\TacheRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\InterventionRepository;
 use App\Repository\AffecterDemandeRepository;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,7 +24,8 @@ public function createIntervention(
     Request $request,
     AffecterDemandeRepository $affectationRepository,
     TacheRepository $tacheRepository,
-    EntityManagerInterface $em
+    EntityManagerInterface $em,
+    MailerInterface $mailer
 ): JsonResponse {
     $data = json_decode($request->getContent(), true);
 
@@ -51,6 +55,33 @@ public function createIntervention(
     }
     $affectation->setStatutAffectation(StatutAffectation::TERMINEE);
     $em->persist($intervention);
+    $demande = $affectation->getDemande();
+    $client = $demande->getClient(); // méthode à adapter selon ta relation
+
+    // 🔔 Création de la notification
+    $notification = new Notification();
+    $notification->setTitre('Intervention terminée')
+        ->setMessage('L\'intervention liée à votre contrat a été terminée avec succès. Merci de remplir le formulaire de satisfaction.')
+        ->setIsRead(false)
+        ->setCreatedAt(new \DateTimeImmutable())
+        ->setUsers($client); // ou ->setUser($client) selon ta classe
+
+    $em->persist($notification);
+
+    // 📧 Envoi de l'email avec template Twig
+    $email = (new Email())
+        ->from('support@tonapp.com')
+        ->to($client->getEmail())
+        ->subject('Intervention terminée - Merci de remplir le formulaire')
+        ->html($this->renderView('emails/intervention_terminee.html.twig', [
+            'client' => $client,
+            'intervention' => $intervention,
+            'affectation' => $affectation,
+        ]));
+
+    $mailer->send($email);
+
+    $em->flush();
     $em->flush();
 
     return $this->json(['message' => 'Intervention créée et affectation terminée.']);
