@@ -13,6 +13,8 @@ class ModePaiement
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+
+
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
@@ -24,6 +26,7 @@ class ModePaiement
     #[ORM\ManyToMany(targetEntity: Facture::class, inversedBy: 'modePaiements')]
     private Collection $facture;
 
+   
 
     public function __construct()
     {
@@ -70,5 +73,7 @@ class ModePaiement
 
         return $this;
     }
+
+   
 
     }

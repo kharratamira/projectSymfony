@@ -259,7 +259,13 @@ public function previewFacture(
         foreach ($factures as $facture) {
             $intervention = $facture->getIntervention();
             $client = $intervention?->getAffectation()?->getDemande()?->getClient();
-
+  $modesPaiement = [];
+        foreach ($facture->getModePaiements() as $mode) {
+            $modesPaiement[] = [
+                'id' => $mode->getId(),
+                'nom' => $mode->getModePaiement(),
+            ];
+        }
             $response[] = [
                 'id' => $facture->getId(),
                 'numFacture' => $facture->getNumFacture(),
@@ -270,6 +276,9 @@ public function previewFacture(
                 'montantTTC' => $facture->getMontantTTC(),
                 'remise' => $facture->getRemise(),
                 'statut' => $facture->getStatut()->value,
+                'modePaiements' => $modesPaiement, // ✅ ajouté ici
+
+
                 'intervention' => $intervention ? [
                     'id' => $intervention->getId(),
                     'observation' => $intervention->getObservation(),
@@ -294,46 +303,58 @@ public function previewFacture(
 
     // ✅ GET FACTURES PAR CLIENT (par email)
     #[Route('/facturesclient', name: 'get_factures_by_client', methods: ['GET'])]
-    public function getFacturesByClient(Request $request, FactureRepository $factureRepository): JsonResponse
-    {
-        $email = $request->query->get('email');
+public function getFacturesByClient(Request $request, FactureRepository $factureRepository): JsonResponse
+{
+    $email = $request->query->get('email');
 
-        if (!$email) {
-            return $this->json(['error' => 'Email client requis.'], 400);
-        }
+    if (!$email) {
+        return $this->json(['error' => 'Email client requis.'], 400);
+    }
 
-        $factures = $factureRepository->findFacturesByClientEmail($email);
+    $factures = $factureRepository->findFacturesByClientEmail($email);
 
-        $response = [];
-        foreach ($factures as $facture) {
-            $response[] = [
-                'id' => $facture->getId(),
-                'numFacture' => $facture->getNumFacture(),
-                'dateEmission' => $facture->getDateEmission()?->format('Y-m-d'),
-                'dateEcheance' => $facture->getDateEcheance()?->format('Y-m-d'),
-                'montantHTVA' => $facture->getMontantHTVA(),
-                'tva' => $facture->getTVA(),
-                'montantTTC' => $facture->getMontantTTC(),
-                'remise' => $facture->getRemise(),
-                'statut' => $facture->getStatut()->value,
-                'intervention' => [
-                    'id' => $facture->getIntervention()->getId(),
-                    'observation' => $facture->getIntervention()->getObservation(),
-                    'dateFin' => $facture->getIntervention()->getDateFin()?->format('Y-m-d'),
-                    'taches' => array_map(fn($t) => [
-                        'tache' => $t->getTache(),
-                        'prixTache' => $t->getPrixTache(),
-                    ], $facture->getIntervention()->getTaches()->toArray())
-                ],
-                'client' => [
-                    'nom' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getNom(),
-                    'prenom' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getPrenom(),
-                    'email' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getEmail(),
-                    'entreprise' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getEntreprise(),
-                ]
+    $response = [];
+
+    foreach ($factures as $facture) {
+        // Récupérer les modes de paiement pour chaque facture
+        $modesPaiement = [];
+        foreach ($facture->getModePaiements() as $mode) {
+            $modesPaiement[] = [
+                'id' => $mode->getId(),
+                'nom' => $mode->getModePaiement(),
             ];
         }
 
-        return $this->json(['status' => 'success', 'data' => $response]);
+        $response[] = [
+            'id' => $facture->getId(),
+            'numFacture' => $facture->getNumFacture(),
+            'dateEmission' => $facture->getDateEmission()?->format('Y-m-d'),
+            'dateEcheance' => $facture->getDateEcheance()?->format('Y-m-d'),
+            'montantHTVA' => $facture->getMontantHTVA(),
+            'tva' => $facture->getTVA(),
+            'montantTTC' => $facture->getMontantTTC(),
+            'remise' => $facture->getRemise(),
+            'statut' => $facture->getStatut()->value,
+            'modePaiements' => $modesPaiement,
+            'intervention' => [
+                'id' => $facture->getIntervention()->getId(),
+                'observation' => $facture->getIntervention()->getObservation(),
+                'dateFin' => $facture->getIntervention()->getDateFin()?->format('Y-m-d'),
+                'taches' => array_map(fn($t) => [
+                    'tache' => $t->getTache(),
+                    'prixTache' => $t->getPrixTache(),
+                ], $facture->getIntervention()->getTaches()->toArray())
+            ],
+            'client' => [
+                'nom' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getNom(),
+                'prenom' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getPrenom(),
+                'email' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getEmail(),
+                'entreprise' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getEntreprise(),
+            ]
+        ];
     }
+
+    return $this->json(['status' => 'success', 'data' => $response]);
+}
+
 }
