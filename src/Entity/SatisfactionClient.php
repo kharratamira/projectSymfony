@@ -24,8 +24,9 @@ class SatisfactionClient
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dateCreation = null;
 
-    #[ORM\ManyToOne(inversedBy: 'satisfactionClients')]
-    private ?Intervention $intervention = null;
+   #[ORM\OneToOne(inversedBy: 'satisfactionClient')]
+#[ORM\JoinColumn(nullable: false)]
+private ?Intervention $intervention = null;
 
     public function getId(): ?int
     {

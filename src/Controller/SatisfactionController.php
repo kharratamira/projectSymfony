@@ -46,12 +46,25 @@ public function createSatisfaction(
     return new JsonResponse(['message' => 'Satisfaction enregistrée avec succès.']);
 }
 #[Route('/getSatisfaction', name: 'get_all_satisfaction', methods: ['GET'])]
-public function getAllSatisfaction(SatisfactionClientRepository $satisfactionRepository): JsonResponse
+public function getAllSatisfaction(SatisfactionClientRepository $satisfactionRepository,InterventionRepository $intervention): JsonResponse
 {
     $satisfactions = $satisfactionRepository->findAllsatisfactionClient();
 
-    $response = array_map(function($item) {
-        return [
+ $response = array_map(function($item) use ($intervention) {
+        // Récupérer l'entité Intervention complète avec ses relations
+        $intervention = $intervention->find($item['intervention_id']);
+        
+        // Formater les tâches de l'intervention
+        $taches = [];
+        if ($intervention && $intervention->getTaches()) {
+            foreach ($intervention->getTaches() as $tache) {
+                $taches[] = [
+                    'id' => $tache->getId(),
+                    'tache' => $tache->getTache(),
+                    'prix' => $tache->getPrixTache(),
+                ];
+            }
+        }        return [
             'satisfaction' => [
                 'id' => $item['satisfaction_id'],
                 'niveau' => $item['satisfaction_niveau'],
@@ -62,9 +75,12 @@ public function getAllSatisfaction(SatisfactionClientRepository $satisfactionRep
                 'id' => $item['intervention_id'],
                 'date_fin' => $item['intervention_date_fin']?->format('Y-m-d H:i:s'),
                 'observation' => $item['intervention_observation'],
-            ],
+                  'taches' => $taches ,// Ajout des tâches
+            
+            
             'affectation' => [
                 'id' => $item['affectation_id'],
+                'date_prevu'=>$item['affectation_date_prevu']->format('Y-m-d H:i:s'),
             ],
            
             'demande' => [
@@ -82,8 +98,9 @@ public function getAllSatisfaction(SatisfactionClientRepository $satisfactionRep
                 'id' => $item['technicien_id'],
                 'nom' => $item['technicien_nom'],
                 'prenom' => $item['technicien_prenom'],
+                'specialite'=>$item['technicien_specialite']
             ]
-        ];
+         ] ];
     }, $satisfactions);
 
     return $this->json([

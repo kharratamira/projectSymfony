@@ -67,9 +67,9 @@ public function saveDemande(
 
     // Récupérer le client existant
     $client = $clientRepository->findOneBy(['email' => $data['email']]);
-    if (!$client) {
-        return $this->json(['message' => 'Client non trouvé.'], 404);
-    }
+    // if (!$client) {
+    //     return $this->json(['message' => 'Client non trouvé.'], 404);
+    // }
 
     // Vérification du répertoire de stockage
     $uploadDir = $this->getParameter('photos_directory');
@@ -130,7 +130,7 @@ public function saveDemande(
             }
         }
 
-        $em->persist($demande);
+     
          $notif = new Notification();
         $notif->setTitre('Votre demande contrat a été généré')
               ->setMessage(sprintf('Votre demande contrat %s a été créé avec succès', $demande->getDescription()))
@@ -138,7 +138,7 @@ public function saveDemande(
               ->setCreatedAt(new \DateTimeImmutable())
               ->setUsers($client);
 
-        $em->persist($notif);
+      
 
         // Envoi de l'email
         $email = (new Email())
@@ -154,7 +154,8 @@ public function saveDemande(
         $logger->info('Email envoyé au admin');
 
        
-    
+       $em->persist($demande);
+         $em->persist($notif);
         $em->flush();
         $em->commit();
 
@@ -184,6 +185,11 @@ public function saveDemande(
         // Map the demandes to an array of data
         $demandeData = [];
         foreach ($demandes as $demande) {
+              $statutsAffectation = [];
+        foreach ($demande->getAffecterDemandes() as $affectation) {
+            $statutsAffectation[] = $affectation->getStatutAffectation();
+        }
+
             $demandeData[] = [
                 'id' => $demande->getId(),
                 'description' => $demande->getDescription(),
@@ -203,6 +209,7 @@ public function saveDemande(
                     $demande->getPhoto2() ? $baseUrl . $demande->getPhoto2() : null,
                     $demande->getPhoto3() ? $baseUrl . $demande->getPhoto3() : null,
                 ],
+            'statutsAffectation' => $statutsAffectation,
             ];
         }
 
@@ -219,30 +226,30 @@ public function saveDemande(
         $data = json_decode($request->getContent(), true);
     
         // Check if the required fields are present
-        $demandes= [ 'description', ];
-        foreach ($demandes as $demande) {
-            if (!isset($data[$demande])) {
-                return $this->json(['message' => "Le champ '$demande' est requis."], 400);
-            }
-        }
+        // $demandes= [ 'description', ];
+        // foreach ($demandes as $demande) {
+        //     if (!isset($data[$demande])) {
+        //         return $this->json(['message' => "Le champ '$demande' est requis."], 400);
+        //     }
+        // }
     
         // Retrieve the DemandeIntervention entity by ID
         $demande = $this->demandeRepository->find($demandeId);
-        if (!$demande) {
-            return $this->json(['message' => 'Demande non trouver.'], 404);
-        }
-        if (isset($data['description'])) {
-            $demande->setDescription($data['description']);
-        }
+        // if (!$demande) {
+        //     return $this->json(['message' => 'Demande non trouver.'], 404);
+        // }
+        // if (isset($data['description'])) {
+        //     $demande->setDescription($data['description']);
+        // }
         
     
     
         // Optionally update associated client data
         if (isset($data['client'])) {
             $client = $demande->getClient();
-            if (!$client) {
-                return $this->json(['message' => 'Client associé non trouvé.'], 404);
-            }
+            // if (!$client) {
+            //     return $this->json(['message' => 'Client associé non trouvé.'], 404);
+            // }
     
             // Mettre à jour l'entreprise du client
             if (isset($data['client']['entreprise'])) {
@@ -352,59 +359,59 @@ public function cancelDemande(int $id, EntityManagerInterface $em): JsonResponse
     }
 }
 
-#[Route('/demandesclient', name: 'api_demandes_by_client_email', methods: ['GET'])]
-public function getDemandeByClientEmail(
-    Request $request,
-    SerializerInterface $serializer,
-    ClientRepository $clientRepository,
-    ValidatorInterface $validator
-): JsonResponse {
-    // 1. Récupération et validation de l'email
-    $email = $request->query->get('email');
+// #[Route('/demandesclient', name: 'api_demandes_by_client_email', methods: ['GET'])]
+// public function getDemandeByClientEmail(
+//     Request $request,
+//     SerializerInterface $serializer,
+//     ClientRepository $clientRepository,
+//     ValidatorInterface $validator
+// ): JsonResponse {
+//     // 1. Récupération et validation de l'email
+//     $email = $request->query->get('email');
     
-    $errors = $validator->validate($email, [
-        new Assert\NotBlank(),
-        new Assert\Email()
-    ]);
+//     $errors = $validator->validate($email, [
+//         new Assert\NotBlank(),
+//         new Assert\Email()
+//     ]);
 
-    if (count($errors) > 0) {
-        return $this->json([
-            'status' => 'error',
-            'message' => 'Email invalide',
-            'errors' => (string) $errors
-        ], JsonResponse::HTTP_BAD_REQUEST);
-    }
+//     if (count($errors) > 0) {
+//         return $this->json([
+//             'status' => 'error',
+//             'message' => 'Email invalide',
+//             'errors' => (string) $errors
+//         ], JsonResponse::HTTP_BAD_REQUEST);
+//     }
 
-    // 2. Vérification de l'existence du client
-    $client = $clientRepository->findOneBy(['email' => $email]);
+//     // 2. Vérification de l'existence du client
+//     $client = $clientRepository->findOneBy(['email' => $email]);
     
-    if (!$client) {
-        return $this->json([
-            'status' => 'error',
-            'message' => 'Client non trouvé'
-        ], JsonResponse::HTTP_NOT_FOUND);
-    }
+//     if (!$client) {
+//         return $this->json([
+//             'status' => 'error',
+//             'message' => 'Client non trouvé'
+//         ], JsonResponse::HTTP_NOT_FOUND);
+//     }
 
-    // 3. Récupération des demandes
-    $demandes = $this->demandeRepository->findBy([
-        'client' => $client
-    ], ['dateDemande' => 'DESC']);
+//     // 3. Récupération des demandes
+//     $demandes = $this->demandeRepository->findBy([
+//         'client' => $client
+//     ], ['dateDemande' => 'DESC']);
 
-    // 4. Formatage de la réponse
-    $context = [
-        'groups' => ['demande:read'],
-        'datetime_format' => 'Y-m-d H:i:s'
-    ];
+//     // 4. Formatage de la réponse
+//     $context = [
+//         'groups' => ['demande:read'],
+//         'datetime_format' => 'Y-m-d H:i:s'
+//     ];
 
-    return new JsonResponse(
-        $serializer->serialize([
-            'status' => 'success',
-            'count' => count($demandes),
-            'data' => $demandes
-        ], 'json', $context),
-        JsonResponse::HTTP_OK,
-        [],
-        true
-    );
-}
+//     return new JsonResponse(
+//         $serializer->serialize([
+//             'status' => 'success',
+//             'count' => count($demandes),
+//             'data' => $demandes
+//         ], 'json', $context),
+//         JsonResponse::HTTP_OK,
+//         [],
+//         true
+//     );
+// }
 }

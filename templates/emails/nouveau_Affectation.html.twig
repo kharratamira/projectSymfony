@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Intervention Terminée</title>
+    <title>Nouvelle affectation</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -54,26 +54,16 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Intervention Terminée</h1>
+            <h1>Vous avez été affecté à une nouvelle demande d'intervention</h1>
         </div>
         <div class="content">
-            <p class="greeting">Bonjour {{ client.nom }} {{ client.prenom }},</p>
+            <p class="greeting">Bonjour {{ technicien.nom }} {{ technicien.prenom }},</p>
 
-            <p>
-                Nous vous informons que l’intervention concernant votre demande a été 
-                <strong style="color: green;">terminée avec succès</strong>.
-            </p>
-
-            <p>
-                Afin d'améliorer continuellement la qualité de nos services, nous vous invitons à remplir notre formulaire de satisfaction.
-            </p>
-
-            {# <a href="https://votre-site.fr/formulaire-satisfaction" class="cta">
-                Remplir le formulaire
-            </a> #}
+            <p><strong>Client :</strong> {{ demande.client.prenom }} {{ demande.client.nom }}, {{ demande.client.adresse }}</p>
+            <p><strong>Date prévue :</strong> {{ date_prevu }}</p>
 
             <p style="margin-top: 30px;">
-                Merci pour votre confiance.<br>
+                Merci pour votre engagement.<br>
                 Cordialement,<br>
                 <strong>L'équipe technique</strong>
             </p>

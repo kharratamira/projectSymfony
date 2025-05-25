@@ -16,7 +16,7 @@ class Facture
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+  #[ORM\Column(length: 255, unique: true)]
     private ?string $numFacture = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
@@ -48,6 +48,9 @@ private ?Intervention $intervention = null;
  */
 #[ORM\ManyToMany(targetEntity: ModePaiement::class, mappedBy: 'facture')]
 private Collection $modePaiements;
+#[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+private ?\DateTimeInterface $datePaiement = null;
+
 
 public function __construct()
 {
@@ -187,6 +190,16 @@ public function removeModePaiement(ModePaiement $modePaiement): static
         $modePaiement->removeFacture($this);
     }
 
+    return $this;
+}
+public function getDatePaiement(): ?\DateTimeInterface
+{
+    return $this->datePaiement;
+}
+
+public function setDatePaiement(\DateTimeInterface $datePaiement): static
+{
+    $this->datePaiement = $datePaiement;
     return $this;
 }
 }

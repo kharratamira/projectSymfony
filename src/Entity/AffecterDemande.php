@@ -2,9 +2,10 @@
 
 namespace App\Entity;
 
-use App\Repository\AffecterDemandeRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\AffecterDemandeRepository;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: AffecterDemandeRepository::class)]
 class AffecterDemande
@@ -17,6 +18,7 @@ class AffecterDemande
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $datePrevu = null;
     #[ORM\Column(type:"string",enumType: StatutAffectation::class)]
+    #[Groups(['demande:read', 'client:read'])]
     private ?StatutAffectation $statutAffectation = null;
 
 

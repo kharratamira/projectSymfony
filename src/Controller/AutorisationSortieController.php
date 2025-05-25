@@ -50,7 +50,7 @@ final class AutorisationSortieController extends AbstractController
                      ->setDateFin(new \DateTime($data['dateFin']))
                      ->setRaison($data['raison']);
     
-        $em->persist($autorisation);
+        
            // Création de la notification
         $notif = new Notification();
         $notif->setTitre('Nouvelle autorisation de sortie')
@@ -115,6 +115,8 @@ final class AutorisationSortieController extends AbstractController
        }
 
        // Final response
+       $em->persist($autorisation);
+       $em->persist($notif);
        $em->flush();
         return $this->json(['success' => true]);
     }

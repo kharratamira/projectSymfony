@@ -20,69 +20,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 final class FactureController extends AbstractController{
 
-// #[Route('/genererfacture/{id}', name: 'generer_facture', methods: ['POST'])]
-// public function genererFacture(
-//     int $id,
-//     Request $request,
-//     EntityManagerInterface $em,
-//     InterventionRepository $interventionRepository
-// ): JsonResponse {
-//     $intervention = $interventionRepository->find($id);
 
-//     if (!$intervention) {
-//         return $this->json(['error' => 'Intervention introuvable.'], 404);
-//     }
-
-//     $taches = $intervention->getTaches();
-//     if (count($taches) === 0) {
-//         return $this->json(['error' => 'Aucune tâche liée à cette intervention.'], 400);
-//     }
-
-//     $montantHTVA = array_reduce($taches->toArray(), fn($total, $t) => $total + $t->getPrixTache(), 0);
-//     $TVA = round($montantHTVA * 0.2, 2);
-//     $montantTTC = round($montantHTVA + $TVA, 2);
-
-//     $data = json_decode($request->getContent(), true);
-//     $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
-//         $montantAvecRemise = $montantTTC;
-
-//     if ($remise > 0 && $remise <= 100) {
-//         $montantAvecRemise = round($montantTTC - ($montantTTC * ($remise / 100)), 2);
-//     }
-
-//     $facture = new Facture();
-//     $facture->setNumFacture('FAC-' . strtoupper(uniqid()))
-//         ->setDateEmission(new \DateTime())
-//         ->setDateEcheance((new \DateTime())->modify('+30 days'))
-//         ->setMontantHTVA($montantHTVA)
-//         ->setTVA($TVA)
-//         ->setMontantTTC($montantAvecRemise)
-//         ->setRemise($remise)
-//         ->setStatut(statutFacture::EN_ATTENTE)
-//         ->setIntervention($intervention);
-
-//     $em->persist($facture);
-//     $em->flush();
-
-//     return $this->json([
-//         'numFacture' => $facture->getNumFacture(),
-//         'dateEmission' => $facture->getDateEmission()?->format('Y-m-d'),
-//         'dateEcheance' => $facture->getDateEcheance()?->format('Y-m-d'),
-//         'montantHTVA' => $facture->getMontantHTVA(),
-//         'tva' => $facture->getTVA(),
-//         'montantTTC' => $facture->getMontantTTC(),
-//         'remise' => $facture->getRemise(),
-//         'statut' => $facture->getStatut()->value,
-//         'intervention' => [
-//             'observation' => $facture->getIntervention()?->getObservation(),
-//             'taches' => array_map(fn($t) => [
-//                 'tache' => $t->getTache(),
-//                 'prixTache' => $t->getPrixTache(),
-//             ], $facture->getIntervention()?->getTaches()->toArray() ?? [])
-//         ]
-//     ]);
-
-// }
 #[Route('/genererfacture/{id}', name: 'generer_facture', methods: ['POST'])]
 public function genererFacture(
     int $id,
@@ -90,6 +28,7 @@ public function genererFacture(
     EntityManagerInterface $em,
     InterventionRepository $interventionRepository,
     MailerInterface $mailer,
+    FactureRepository $factureRepository,
     LoggerInterface $logger
 ): JsonResponse {
     try {
@@ -106,20 +45,28 @@ public function genererFacture(
 
         // Calcul des montants
         $montantHTVA = array_reduce($taches->toArray(), fn($total, $t) => $total + $t->getPrixTache(), 0);
-        $TVA = round($montantHTVA * 0.2, 2);
+$TVA = round($montantHTVA * 19/100, 2);
         $montantTTC = round($montantHTVA + $TVA, 2);
 
         $data = json_decode($request->getContent(), true);
         $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
-        $montantAvecRemise = $montantTTC;
+        $montantAvecRemise = $remise > 0 && $remise <= 100 
+            ? round($montantTTC - ($montantTTC * ($remise / 100)), 2)
+            : $montantTTC;
+ $lastFacture = $factureRepository->findOneBy([], ['id' => 'DESC']);
+        $lastNum = 0;
 
-        if ($remise > 0 && $remise <= 100) {
-            $montantAvecRemise = round($montantTTC - ($montantTTC * ($remise / 100)), 2);
+        if ($lastFacture !== null) {
+            $lastNumStr = preg_replace('/[^0-9]/', '', $lastFacture->getNumFacture());
+            $lastNum = (int) $lastNumStr;
         }
+
+        $newNum = str_pad((string) ($lastNum + 1), 3, '0', STR_PAD_LEFT);
+        $numeroFacture = 'FAC-' . $newNum;
 
         // Création de la facture
         $facture = new Facture();
-        $facture->setNumFacture('FAC-' . strtoupper(uniqid()))
+        $facture->setNumFacture($numeroFacture)
             ->setDateEmission(new \DateTime())
             ->setDateEcheance((new \DateTime())->modify('+30 days'))
             ->setMontantHTVA($montantHTVA)
@@ -258,7 +205,12 @@ public function previewFacture(
         $response = [];
         foreach ($factures as $facture) {
             $intervention = $facture->getIntervention();
+                    $affectation = $intervention?->getAffectation();
+
             $client = $intervention?->getAffectation()?->getDemande()?->getClient();
+            $technicien = $affectation?->getTechnicien();
+
+
   $modesPaiement = [];
         foreach ($facture->getModePaiements() as $mode) {
             $modesPaiement[] = [
@@ -277,7 +229,7 @@ public function previewFacture(
                 'remise' => $facture->getRemise(),
                 'statut' => $facture->getStatut()->value,
                 'modePaiements' => $modesPaiement, // ✅ ajouté ici
-
+                'date_paiement' => $facture->getDatePaiement()?->format('Y-m-d H:i:s'),
 
                 'intervention' => $intervention ? [
                     'id' => $intervention->getId(),
@@ -286,15 +238,23 @@ public function previewFacture(
                     'taches' => array_map(fn($t) => [
                         'tache' => $t->getTache(),
                         'prixTache' => $t->getPrixTache(),
-                    ], $intervention->getTaches()->toArray())
-                ] : null,
-                'client' => $client ? [
+                    ], $intervention->getTaches()->toArray()),
+                
+            'datePrevu' => $facture->getIntervention()->getAffectation()->getDatePrevu()?->format('Y-m-d'),
+
+
                     'nom' => $client->getNom(),
                     'prenom' => $client->getPrenom(),
                     'email' => $client->getEmail(),
                     'entreprise' => $client->getEntreprise(),
+                    'prenomTechnicien' => $technicien->getPrenom(),
+                    'nomTechnicien' => $technicien->getNom(),
+                  'specialite' => $technicien->getSpecialite(),
+
                     
                 ] : null,
+                 
+                
             ];
         }
 
@@ -336,6 +296,8 @@ public function getFacturesByClient(Request $request, FactureRepository $facture
             'remise' => $facture->getRemise(),
             'statut' => $facture->getStatut()->value,
             'modePaiements' => $modesPaiement,
+         'date_paiement' => $facture->getDatePaiement()?->format('Y-m-d H:i:s'),
+
             'intervention' => [
                 'id' => $facture->getIntervention()->getId(),
                 'observation' => $facture->getIntervention()->getObservation(),
@@ -343,9 +305,16 @@ public function getFacturesByClient(Request $request, FactureRepository $facture
                 'taches' => array_map(fn($t) => [
                     'tache' => $t->getTache(),
                     'prixTache' => $t->getPrixTache(),
-                ], $facture->getIntervention()->getTaches()->toArray())
-            ],
-            'client' => [
+                ], $facture->getIntervention()->getTaches()->toArray()),
+            
+            
+            'datePrevu' => $facture->getIntervention()->getAffectation()->getDatePrevu()?->format('Y-m-d'),
+            'prenomTechnicien' => $facture->getIntervention()->getAffectation()->getTechnicien()->getPrenom(),
+                'nomTechnicien' => $facture->getIntervention()->getAffectation()->getTechnicien()->getNom(),
+                    'specialite' => $facture->getIntervention()->getAffectation()->getTechnicien()->getSpecialite(),
+
+        
+            
                 'nom' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getNom(),
                 'prenom' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getPrenom(),
                 'email' => $facture->getIntervention()->getAffectation()->getDemande()->getClient()->getEmail(),
@@ -356,5 +325,50 @@ public function getFacturesByClient(Request $request, FactureRepository $facture
 
     return $this->json(['status' => 'success', 'data' => $response]);
 }
+#[Route('/payeeFacture/{id}', name: 'api_payeeFacture', methods: ['PUT'], requirements: ['id' => '\d+'])]
+public function payeeFacture(
+    int $id, 
+    EntityManagerInterface $em,
+    FactureRepository $factureRep
+): JsonResponse
+{
+    $facture = $factureRep->find($id);
 
-}
+    if (!$facture) {
+        return $this->json(['message' => 'Facture non trouvée.'], 404);
+    }
+
+    // Vérification automatique du retard
+    $now = new \DateTime();
+    if ($facture->getDateEcheance() < $now && $facture->getStatut() === statutFacture::EN_ATTENTE) {
+        $facture->setStatut(statutFacture::RETARD);
+        $em->flush();
+        return $this->json([
+            'success' => false,
+            'message' => 'La facture est en retard et ne peut être marquée comme payée.',
+            'statut' => statutFacture::RETARD->value
+        ], 400);
+    }
+
+    // Marquage comme payée
+    try {
+        $facture->setStatut(statutFacture::PAYEE);
+        $facture->setDatePaiement($now); // Ajoutez cette propriété si nécessaire
+
+        $em->persist($facture);
+        $em->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Facture marquée comme payée avec succès.',
+            'statut' => $facture->getStatut()->value,
+            'date_paiement' => $facture->getDatePaiement()?->format('Y-m-d H:i:s')
+        ]);
+    } catch (\Exception $e) {
+        return $this->json([
+            'success' => false,
+            'message' => 'Erreur lors du traitement de la facture.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}}

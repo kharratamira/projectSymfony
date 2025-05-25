@@ -26,7 +26,8 @@ public function findAllWithDetails()
         ->join('d.client', 'c')
         ->getQuery()
         ->getResult();
-}public function findAllsatisfactionClient(): array
+}
+public function findAllsatisfactionClient(): array
 {
     return $this->createQueryBuilder('s')
         ->select(
@@ -38,6 +39,8 @@ public function findAllWithDetails()
             'i.dateFin AS intervention_date_fin',
             'i.observation AS intervention_observation',
             'a.id AS affectation_id',
+            'a.datePrevu AS affectation_date_prevu', // Correction ici
+
             'd.id AS demande_id',
             'd.description AS demande_description',
             'c.id AS client_id',
@@ -47,7 +50,8 @@ public function findAllWithDetails()
             'c.email AS client_email',
             't.id AS technicien_id',
             't.nom AS technicien_nom',
-            't.prenom AS technicien_prenom'
+            't.prenom AS technicien_prenom',
+            't.specialite AS technicien_specialite'
         )
         ->join('s.intervention', 'i')
         ->join('i.affectation', 'a')

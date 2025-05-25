@@ -52,14 +52,15 @@ final class AffectationController extends AbstractController{
     
             // 3. Récupération des entités
             $demande = $demandeRepository->find($data['demande_id']);
+           
             $technicien = $technicienRepository->find($data['technicien_id']);
     
-            if (!$demande || !$technicien) {
-                return $this->json(
-                    ['error' => 'Demande ou technicien introuvable.'],
-                    Response::HTTP_NOT_FOUND
-                );
-            }
+            // if (!$demande || !$technicien) {
+            //     return $this->json(
+            //         ['error' => 'Demande ou technicien introuvable.'],
+            //         Response::HTTP_NOT_FOUND
+            //     );
+            // }
     
             // 4. Vérification de l'état de la demande
             
@@ -108,10 +109,10 @@ final class AffectationController extends AbstractController{
             ->setParameter('statut', 'ACCEPTER')
             ->setParameter('date_prevu', $datePrevu);
 
-        $autorisationsEnConflit = $qb->getQuery()->getResult();
+        $autorisations = $qb->getQuery()->getResult();
 
-        if (count($autorisationsEnConflit) > 0) {
-            $autorisation = $autorisationsEnConflit[0];
+        if (count($autorisations) > 0) {
+            $autorisation = $autorisations[0];
             return $this->json(
                 [
                     'error' => 'Le technicien est en autorisation de sortie à cette date.',
@@ -166,24 +167,25 @@ final class AffectationController extends AbstractController{
                         ->setTechnicien($technicien)
                         ->setDatePrevu($datePrevu);
                         $demande->setIsAffecter(true);
+                      
             // 8. Validation
-            $errors = $validator->validate($affectation);
-            if (count($errors) > 0) {
-                $errorMessages = [];
-                foreach ($errors as $error) {
-                    $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-                }
-                return $this->json(
-                    ['errors' => $errorMessages],
-                    Response::HTTP_UNPROCESSABLE_ENTITY
-                );
-            }
+            // $errors = $validator->validate($affectation);
+            // if (count($errors) > 0) {
+            //     $errorMessages = [];
+            //     foreach ($errors as $error) {
+            //         $errorMessages[$error->getPropertyPath()] = $error->getMessage();
+            //     }
+            //     return $this->json(
+            //         ['errors' => $errorMessages],
+            //         Response::HTTP_UNPROCESSABLE_ENTITY
+            //     );
+            // }
     
             // 9. Persistance
             $em->persist($affectation);
             $notif = new Notification();
-           $notif->setTitre('Bienvenue !');
-           $notif->setMessage('Votre compte a été créé avec succès.');
+           $notif->setTitre('Bonjour');
+           $notif->setMessage(message: 'Nouvelle affectation pour vous.');
            $notif->setIsRead(isRead: false);
            $notif->setCreatedAt(new \DateTimeImmutable());
            $notif->setUsers($technicien);
@@ -199,6 +201,7 @@ final class AffectationController extends AbstractController{
                'technicien' => $technicien,
                 'demande' => $demande,
                 'date_prevu' => $datePrevu->format('Y-m-d H:i'),
+
                
             ]));
 
@@ -307,60 +310,6 @@ public function getAffectationsTechnicien(
             ];
         }, $autorisations)
     ]);
-}
-
-#[Route('/enCour/{id}', name: 'update_statut_en_cour', methods: ['PUT'])]
-public function enCour(
-    int $id,
-    AffecterDemandeRepository $affecterDemandeRepository,
-    EntityManagerInterface $em
-): Response {
-    $affectation = $affecterDemandeRepository->find($id);
-
-    if ($affectation->getStatutAffectation() === StatutAffectation::TERMINEE) {
-        return $this->json([
-            'status' => 'error',
-            'message' => 'Impossible de changer le statut, il est déjà terminé.'
-        ], Response::HTTP_BAD_REQUEST);
-    }
-    
-    if ($affectation->getStatutAffectation() === StatutAffectation::EN_COURS) {
-        return $this->json([
-            'status' => 'info',
-            'message' => 'Le statut est déjà en cours.'
-        ], Response::HTTP_OK);
-    }
-    
-    // Sinon, on le passe à EN_COURS
-    $affectation->setStatutAffectation(StatutAffectation::EN_COURS);
-    $em->flush();
-    
-    return $this->json([
-        'status' => 'success',
-        'message' => 'Le statut a été mis à jour en "en_cours" avec succès.'
-    ], Response::HTTP_OK);
-    
-
-  
-
-}
-
-#[Route('/termine/{id}', name: 'update_statut_termine', methods: ['PUT'])]
-public function termine(
-    int $id,
-    AffecterDemandeRepository $affecterDemandeRepository,
-    EntityManagerInterface $em
-): Response {
-    $affectation = $affecterDemandeRepository->find($id);
-
-    if (!$affectation) {
-        return $this->json(['status' => 'error', 'message' => 'affectation non trouvée.'], Response::HTTP_NOT_FOUND);
-    }
-
-    $affectation->setStatutAffectation(StatutAffectation::TERMINEE);
-    $em->flush();
-
-    return $this->json(['status' => 'success', 'message' => 'La statut en_cour avec  succès.'], Response::HTTP_OK);
 }
 
 }

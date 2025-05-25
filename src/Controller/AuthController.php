@@ -33,18 +33,10 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 #[Route('/api')]
 final class AuthController extends AbstractController
 {
-    private EntityManagerInterface $entityManager;
-    private UserPasswordHasherInterface $passwordEncoder;
-
-    public function __construct(EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordEncoder)
-    {
-        $this->entityManager = $entityManager;
-        $this->passwordEncoder = $passwordEncoder;
-    }
-    
+  
     #[Route('/signup', name: 'api_signup', methods: ['POST'])]
    // #[IsGranted('ROLE_ADMIN')]
-    public function sigupUser(
+    public function AjouterCompte(
         Request $request,
         EntityManagerInterface $entityManager,
         UserPasswordHasherInterface $passwordHasher,
@@ -54,9 +46,6 @@ final class AuthController extends AbstractController
        
     ): JsonResponse {
         try {
-        // if (!$this->isGranted('ROLE_ADMIN')) {
-        //     return new JsonResponse(['message' => 'Accès refusé'], 403);
-        // }
         $data = json_decode($request->getContent(), true);
         if (!$data) {
             return new JsonResponse(['message' => 'Données JSON invalides'], 400);
@@ -151,7 +140,7 @@ final class AuthController extends AbstractController
         }
                $plainPassword = $data['password']; 
                 // On sauvegarde !
-        $entityManager->persist($user);
+     
            // Création notification
            $notif = new Notification();
            $notif->setTitre('Bienvenue !');
@@ -159,11 +148,11 @@ final class AuthController extends AbstractController
            $notif->setIsRead(isRead: false);
            $notif->setCreatedAt(new \DateTimeImmutable());
            $notif->setUsers($user);
-           $entityManager->persist($notif);
+         
            $email = (new Email())
     ->from('amirakharrat541@gmail.com')
-->to($user->getEmail())
-            ->subject('Bienvenue sur notre plateforme !')
+      ->to($user->getEmail())
+         ->subject('Bienvenue sur notre plateforme !')
        ->html(sprintf(
     '<div style="font-family: \'Arial\', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -198,13 +187,15 @@ final class AuthController extends AbstractController
        }
 
        // Final response
+          $entityManager->persist($user);
+            $entityManager->persist($notif);
        $entityManager->flush();
         $photoUrl = null;
         if ($user->getPhoto()) {
             $photoUrl = $request->getSchemeAndHttpHost() . '/uploads/users/' . $user->getPhoto();
         }
         return new JsonResponse([
-            'message' => 'Utilisateur créé avec succès',
+           // 'message' => 'Utilisateur créé avec succès',
             'user' => [
                 'id' => $user->getId(),
                 'nom' => $user->getNom(),
@@ -218,7 +209,7 @@ final class AuthController extends AbstractController
         ], 201);
        // return new JsonResponse(['message' => 'Utilisateur créé avec succès'], 201);
     } catch (\Exception $e) {
-        return new JsonResponse(['message' => 'Une erreur est survenue', 'details' => $e->getMessage()], 500);
+        return new JsonResponse(['message' => '', 'details' => $e->getMessage()], 500);
     }
     }
     #[Route('/getTechnicien', name: 'api_get_users', methods: ['GET'])]
@@ -411,22 +402,7 @@ public function updateCommercial(int $id, Request $request, UserRepository $user
     return new JsonResponse(['message' => 'Commercial mis à jour avec succès'], 200);
 }
 
-#[Route('/mailtest')]
-public function testMail(MailerInterface $mailer)
-{
-    $email = (new Email())
-        ->from('amirakharrat541@gmail.com')
-->to('test@example.com')
-         ->subject('Bienvenue sur notre site')
-    ->html('<h1>Bienvenue !</h1><p>Merci pour votre inscription.</p>');
 
-    try {
-        $mailer->send($email);
-        return new Response('Email envoyé');
-    } catch (\Exception $e) {
-        return new Response('Erreur: ' . $e->getMessage());
-    }
-}
 
 }
 

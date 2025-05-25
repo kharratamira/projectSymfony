@@ -32,9 +32,16 @@ public function createIntervention(
     $affectationId = $data['affectation_id'] ?? null;
     $observation = $data['observation'] ?? null;
     $tacheIds = $data['taches'] ?? []; // tableau d'IDs cochés
-
-    if (!$affectationId || !$observation || empty($tacheIds)) {
+$dateFin = $data['dateFin'] ?? null;
+   
+    if (!$affectationId || !$observation || empty($tacheIds)||!$dateFin) {
+        
         return new JsonResponse(['status' => 'error', 'message' => 'Champs manquants.'], 400);
+    }
+    try {
+        $dateFin = new \DateTime($dateFin);
+    } catch (\Exception $e) {
+        return new JsonResponse(['status' => 'error', 'message' => 'Format de date invalide'], 400);
     }
     $affectation = $affectationRepository->find($affectationId);
     if (!$affectation) {
@@ -44,7 +51,7 @@ public function createIntervention(
     $intervention = new Intervention();
     $intervention->setAffectation($affectation);
     $intervention->setObservation($observation);
-    $intervention->setDateFin(new \DateTime());
+    $intervention->setDateFin($dateFin);
     $intervention->setAffectation($affectation);
 
     foreach ($tacheIds as $tacheId) {
@@ -105,8 +112,8 @@ public function getAllInterventions(InterventionRepository $interventionReposito
                 'prix' => $tache->getPrixTache(),
             ];
         }
- $factureEntity = $interventionEntity->getFacture(); // Assure-toi que Intervention a getFacture()
 
+        $factureEntity = $interventionEntity->getFacture();
         $facture = null;
         if ($factureEntity) {
             $facture = [
@@ -120,6 +127,11 @@ public function getAllInterventions(InterventionRepository $interventionReposito
                 'statut' => $factureEntity->getStatut()->value,
             ];
         }
+
+        // Récupérer la demande associée
+        $demande = $interventionEntity->getAffectation()?->getDemande();
+                $baseUrl = $this->getParameter('app.base_url') . '/uploads/demandes/';
+
         $response[] = [
             'intervention_id' => $intervention['intervention_id'],
             'date_fin' => $intervention['intervention_date_fin'] ? $intervention['intervention_date_fin']->format('Y-m-d H:i:s') : null,
@@ -128,15 +140,26 @@ public function getAllInterventions(InterventionRepository $interventionReposito
             'demande' => [
                 'id' => $intervention['demande_id'],
                 'description' => $intervention['demande_description'],
+                'statut' => $demande?->getStatut(),
+                'dateDemande' => $demande?->getDateDemande()?->format('Y-m-d H:i:s'),
+                'photos' => [
+                    $demande->getPhoto1() ? $baseUrl . $demande->getPhoto1() : null,
+                    $demande->getPhoto2() ? $baseUrl . $demande->getPhoto2() : null,
+                    $demande->getPhoto3() ? $baseUrl . $demande->getPhoto3() : null,
+                ],
             ],
             'client' => [
                 'entreprise' => $intervention['client_entreprise'],
                 'nom' => $intervention['client_nom'],
                 'prenom' => $intervention['client_prenom'],
+                'adresse' => $intervention['client_adresse'] ?? null,
+                'email' => $intervention['client_email'] ?? null,
+                'telephone' => $intervention['client_telephone'] ?? null,
             ],
             'technicien' => [
                 'nom' => $intervention['technicien_nom'],
                 'prenom' => $intervention['technicien_prenom'],
+                'email' => $intervention['technicien_email'] ?? null,
             ],
             'facture' => $facture,
             'taches' => $taches,
@@ -178,7 +201,31 @@ public function getInterventionsByEmail(
                 'prix' => $tache->getPrixTache(),
             ];
         }
-
+        $factureEntity = $interventionEntity->getFacture();
+        $facture = null;
+        if ($factureEntity) {
+            $facture = [
+                'numFacture' => $factureEntity->getNumFacture(),
+                'dateEmission' => $factureEntity->getDateEmission()?->format('Y-m-d H:i:s'),
+                'dateEcheance' => $factureEntity->getDateEcheance()?->format('Y-m-d'),
+                'montantHTVA' => $factureEntity->getMontantHTVA(),
+                'TVA' => $factureEntity->getTVA(),
+                'montantTTC' => $factureEntity->getMontantTTC(),
+                'remise' => $factureEntity->getRemise(),
+                'statut' => $factureEntity->getStatut()->value,
+            ];
+        }
+          $satisfactionClient = $interventionEntity->getSatisfactionClient();
+        $satisfaction = null;
+        if ($satisfactionClient) {
+            $satisfaction = [
+                'niveau' => $satisfactionClient->getNiveau(),
+                'commentaire' => $satisfactionClient->getCommentaire(),
+                'dateCreation' => $satisfactionClient->getDateCreation()?->format('Y-m-d H:i:s'),
+            ];
+        }
+  $demande = $interventionEntity->getAffectation()?->getDemande();
+                $baseUrl = $this->getParameter('app.base_url') . '/uploads/demandes/';
         $response[] = [
             'intervention_id' => $intervention['intervention_id'],
             'date_fin' => $intervention['intervention_date_fin'] ? $intervention['intervention_date_fin']->format('Y-m-d H:i:s') : null,
@@ -187,17 +234,33 @@ public function getInterventionsByEmail(
             'demande' => [
                 'id' => $intervention['demande_id'],
                 'description' => $intervention['demande_description'],
-            ],
+
+                'statut' => $demande?->getStatut(),
+                'dateDemande' => $demande?->getDateDemande()?->format('Y-m-d H:i:s'),
+                'photos' => [
+                    $demande->getPhoto1() ? $baseUrl . $demande->getPhoto1() : null,
+                    $demande->getPhoto2() ? $baseUrl . $demande->getPhoto2() : null,
+                    $demande->getPhoto3() ? $baseUrl . $demande->getPhoto3() : null,
+                ],
+                    ],
             'client' => [
                 'entreprise' => $intervention['client_entreprise'],
                 'nom' => $intervention['client_nom'],
                 'prenom' => $intervention['client_prenom'],
+                'adresse' => $intervention['client_adresse'] ?? null,
+                'email' => $intervention['client_email'] ?? null,
+                'telephone' => $intervention['client_telephone'] ?? null,
+               
+
             ],
             'technicien' => [
                 'nom' => $intervention['technicien_nom'],
                 'prenom' => $intervention['technicien_prenom'],
             ],
+        'facture' => $facture,
+
             'taches' => $taches,
+            'satisfaction_client' => $satisfaction, // Ajout des données de satisfaction
 
         ];
     }
@@ -254,4 +317,60 @@ public function updateIntervention(
     $entityManager->flush();
 
     return $this->json(['status' => 'success', 'message' => 'Intervention mise à jour avec succès.']);
-}}
+}
+#[Route('/enCour/{id}', name: 'update_statut_en_cour', methods: ['PUT'])]
+public function enCour(
+    int $id,
+    AffecterDemandeRepository $affecterDemandeRepository,
+    EntityManagerInterface $em
+): Response {
+    $affectation = $affecterDemandeRepository->find($id);
+
+    if ($affectation->getStatutAffectation() === StatutAffectation::TERMINEE) {
+        return $this->json([
+            'status' => 'error',
+            'message' => 'Impossible de changer le statut, il est déjà terminé.'
+        ], Response::HTTP_BAD_REQUEST);
+    }
+    
+    if ($affectation->getStatutAffectation() === StatutAffectation::EN_COURS) {
+        return $this->json([
+            'status' => 'info',
+            'message' => 'Le statut est déjà en cours.'
+        ], Response::HTTP_OK);
+    }
+    
+    // Sinon, on le passe à EN_COURS
+    $affectation->setStatutAffectation(StatutAffectation::EN_COURS);
+    $em->flush();
+    
+    return $this->json([
+        'status' => 'success',
+        'message' => 'Le statut a été mis à jour en "en_cours" avec succès.'
+    ], Response::HTTP_OK);
+    
+
+  
+
+}
+
+#[Route('/termine/{id}', name: 'update_statut_termine', methods: ['PUT'])]
+public function termine(
+    int $id,
+    AffecterDemandeRepository $affecterDemandeRepository,
+    EntityManagerInterface $em
+): Response {
+    $affectation = $affecterDemandeRepository->find($id);
+
+    if (!$affectation) {
+        return $this->json(['status' => 'error', 'message' => 'affectation non trouvée.'], Response::HTTP_NOT_FOUND);
+    }
+
+    $affectation->setStatutAffectation(StatutAffectation::TERMINEE);
+    $em->flush();
+
+    return $this->json(['status' => 'success', 'message' => 'La statut en_cour avec  succès.'], Response::HTTP_OK);
+}
+
+
+}

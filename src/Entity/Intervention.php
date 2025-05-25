@@ -41,15 +41,11 @@ class Intervention
 #[ORM\OneToOne(mappedBy: 'intervention', targetEntity: Facture::class)]
 private ?Facture $facture = null;
 
-/**
- * @var Collection<int, SatisfactionClient>
- */
-#[ORM\OneToMany(targetEntity: SatisfactionClient::class, mappedBy: 'intervention')]
-private Collection $satisfactionClients;
+#[ORM\OneToOne(mappedBy: 'intervention', targetEntity: SatisfactionClient::class)]
+private ?SatisfactionClient $satisfactionClient = null;
     public function __construct()
     {
         $this->taches = new ArrayCollection();
-        $this->satisfactionClients = new ArrayCollection();
     }
 
 
@@ -133,36 +129,22 @@ public function setFacture(?Facture $facture): static
         return $this;
     }
 
-    /**
-     * @return Collection<int, SatisfactionClient>
-     */
-    public function getSatisfactionClients(): Collection
-    {
-        return $this->satisfactionClients;
+   public function getSatisfactionClient(): ?SatisfactionClient
+{
+    return $this->satisfactionClient;
+}
+
+public function setSatisfactionClient(?SatisfactionClient $satisfactionClient): static
+{
+    // si nécessaire, lier les deux entités
+    if ($satisfactionClient && $satisfactionClient->getIntervention() !== $this) {
+        $satisfactionClient->setIntervention($this);
     }
 
-    public function addSatisfactionClient(SatisfactionClient $satisfactionClient): static
-    {
-        if (!$this->satisfactionClients->contains($satisfactionClient)) {
-            $this->satisfactionClients->add($satisfactionClient);
-            $satisfactionClient->setIntervention($this);
-        }
+    $this->satisfactionClient = $satisfactionClient;
 
-        return $this;
-    }
-
-    public function removeSatisfactionClient(SatisfactionClient $satisfactionClient): static
-    {
-        if ($this->satisfactionClients->removeElement($satisfactionClient)) {
-            // set the owning side to null (unless already changed)
-            if ($satisfactionClient->getIntervention() === $this) {
-                $satisfactionClient->setIntervention(null);
-            }
-        }
-
-        return $this;
-    }
-
+    return $this;
+}
    
     
 }

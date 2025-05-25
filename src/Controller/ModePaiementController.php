@@ -38,6 +38,12 @@ public function setModesPaiement(
         return $this->json(['error' => 'Liste de modes manquante'], 400);
     }
 
+    // Supprimer d'abord les modes existants pour éviter les doublons
+    foreach ($facture->getModePaiements() as $existingMode) {
+        $facture->removeModePaiement($existingMode);
+    }
+
+    // Ajouter les nouveaux modes
     foreach ($data['modes'] as $modeId) {
         $mode = $modeRepo->find($modeId);
         if ($mode) {
@@ -45,24 +51,16 @@ public function setModesPaiement(
         }
     }
 
-   
-    $now = new \DateTimeImmutable();
-
-    if ($facture->getDateEcheance() < $now) {
-        // Facture en retard
-        $facture->setStatut(StatutFacture::RETARD);
-    } else {
-        // Facture payée
-        $facture->setStatut(StatutFacture::PAYEE);
-    }
+    // On ne modifie PAS le statut ici
+    // La date d'échéance n'est pas vérifiée non plus
 
     $em->persist($facture);
     $em->flush();
 
     return $this->json([
         'success' => true,
-        'statut' => $facture->getStatut()->value,  // Renvoyer la valeur string de l'enum
+        'statut' => $facture->getStatut()->value,
+        'message' => 'Modes de paiement enregistrés avec succès'
     ]);
-
 }
 }

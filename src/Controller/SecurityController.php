@@ -102,11 +102,6 @@ public function getUserInfo(Request $request): JsonResponse
         'roles' => $roles
     ]);
 }
-// #[Route('/sessionUser', name: 'api_get_user', methods: ['GET'])]
-// public function getUserInfo(Request $request): JsonResponse
-// {
-//     $user = $this->getUser(); // Récupère l'utilisateur actuel
-//     return $this->json(['authenticated' => $user !== null]);
-// }
+
 
 }

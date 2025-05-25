@@ -55,6 +55,7 @@ class DemandeIntervention
      */
    
      #[ORM\OneToMany(mappedBy: 'demande', targetEntity: AffecterDemande::class, cascade: ['persist', 'remove'])]
+     #[Groups(['demande:read', 'client:read'])]
      private Collection $affecterDemandes;
 
      #[ORM\Column]
