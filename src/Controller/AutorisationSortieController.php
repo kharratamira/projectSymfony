@@ -36,9 +36,9 @@ final class AutorisationSortieController extends AbstractController
     
         if (!$technicienId) {
             return $this->json(['error' => 'ID du technicien manquant'], 400);
-        }
+         }
     
-        $technicien = $em->getRepository(User::class)->find($technicienId);
+         $technicien = $em->getRepository(User::class)->find($technicienId);
     
         if (!$technicien) {
             return $this->json(['error' => 'Technicien introuvable'], 404);

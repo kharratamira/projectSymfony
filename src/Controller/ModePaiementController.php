@@ -15,7 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 final class ModePaiementController extends AbstractController{
     #[Route('/getmodePaiement', name: 'get_tmodePaiement', methods: ['GET'])]
-    public function getTaches(ModePaiementRepository $modePaiementRepository): JsonResponse
+    public function getmodePaiement(ModePaiementRepository $modePaiementRepository): JsonResponse
     {
         $modePaiement = $modePaiementRepository->findAllMode();
 

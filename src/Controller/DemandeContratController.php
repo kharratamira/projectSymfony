@@ -24,7 +24,7 @@ final class DemandeContratController extends AbstractController{
 
    
     #[Route('/createDemandeContrat', name: 'create_demande_contrat', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em, MailerInterface $mailer,
+    public function createDemandeContrat(Request $request, EntityManagerInterface $em, MailerInterface $mailer,
     LoggerInterface $logger): Response
     {
     
@@ -205,7 +205,7 @@ public function getAllDemandesContrat(DemandeContratRepository $demandeContratRe
         ]);
     }
     #[Route('/updateDemandeContrat/{id}', name: 'update_demande_contrat', methods: ['PUT'])]
-    public function updateIntervention(
+    public function updateDemandeContrat(
     int $id,
     Request $request,
     DemandeContratRepository $demandeContratRepository,

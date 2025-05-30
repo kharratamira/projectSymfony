@@ -234,7 +234,7 @@ public function acceptContrat(int $id, EntityManagerInterface $em,ContratReposit
 }
 
 #[Route('/cancelContrat/{id}', name: 'api_cancelContart', methods: ['PUT'], requirements: ['id' => '\d+'])]
-public function cancelDemande(int $id, EntityManagerInterface $em ,ContratRepository $ContratRepository): JsonResponse
+public function cancelContrat(int $id, EntityManagerInterface $em ,ContratRepository $ContratRepository): JsonResponse
 {
     // Retrieve the demande by its ID
     $contart = $ContratRepository->find($id);

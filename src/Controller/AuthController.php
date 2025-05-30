@@ -292,7 +292,7 @@ public function updateTechnicien(int $id, Request $request, UserRepository $user
 
 
 #[Route('/desactiveUser/{id}', name: 'api_delete_technicien', methods: ['DELETE'])]
-public function deleteTechnicien(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
+public function desactiveUser(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
 {
     // Trouver le technicien par son ID
     $technicien = $userRepository->find($id);
@@ -312,7 +312,7 @@ public function deleteTechnicien(int $id, UserRepository $userRepository, Entity
 }
 
 #[Route('/activateUser/{id}', name: 'api_activate_technicien', methods: ['PUT'])]
-public function activateTechnicien(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
+public function activateUSER(int $id, UserRepository $userRepository, EntityManagerInterface $em): JsonResponse
 {
     $technicien = $userRepository->find($id);
 

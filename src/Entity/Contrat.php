@@ -120,7 +120,7 @@ private ?string $NumContrat = null;
             $this->vieContrat = VieContrat::ACTIVE;
             break;
         case StatutDemande::ANNULEE:
-            $this->vieContrat=null;
+            $this->vieContrat=VieContrat::ANNULEE;
             break;
         case StatutDemande::EN_ATTENTE:
             $this->vieContrat = null; // ou VieContrat::EXPIRE ou rien du tout selon ton besoin

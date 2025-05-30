@@ -290,7 +290,7 @@ public function saveDemande(
         }
     }
     #[Route('/deleteDemande/{id}', name: 'api_deleteDemande', methods: ['DELETE'])]
-public function deleteClient(DemandeInterventionRepository $demandeInterventionRepository, EntityManagerInterface $em, int $id): JsonResponse
+public function deleteDemande(DemandeInterventionRepository $demandeInterventionRepository, EntityManagerInterface $em, int $id): JsonResponse
 {
     // Retrieve the client to delete
     $demande = $demandeInterventionRepository->find($id);
