@@ -54,15 +54,7 @@ final class AffectationController extends AbstractController{
             $demande = $demandeRepository->find($data['demande_id']);
            
             $technicien = $technicienRepository->find($data['technicien_id']);
-    
-            // if (!$demande || !$technicien) {
-            //     return $this->json(
-            //         ['error' => 'Demande ou technicien introuvable.'],
-            //         Response::HTTP_NOT_FOUND
-            //     );
-            // }
-    
-            // 4. Vérification de l'état de la demande
+
             
             if ($demande->getStatut()->value !== 'accepter') {
                 return $this->json(
@@ -72,6 +64,12 @@ final class AffectationController extends AbstractController{
             }
             $datePrevu = new \DateTime($data['date_prevu']);
             $currentDate = new \DateTime();
+             $dayOfWeek = (int) $datePrevu->format('w');
+        if ($dayOfWeek === 0 || $dayOfWeek === 6) {
+            return $this->json([
+                'error' => 'Il est impossible d’affecter un technicien un samedi ou un dimanche.'
+            ], Response::HTTP_BAD_REQUEST);
+        }
             if ($datePrevu < $currentDate) {
                 return $this->json(
                     ['error' => 'La date prévue doit être égale ou postérieure à la date actuelle.'],
@@ -168,18 +166,7 @@ final class AffectationController extends AbstractController{
                         ->setDatePrevu($datePrevu);
                         $demande->setIsAffecter(true);
                       
-            // 8. Validation
-            // $errors = $validator->validate($affectation);
-            // if (count($errors) > 0) {
-            //     $errorMessages = [];
-            //     foreach ($errors as $error) {
-            //         $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            //     }
-            //     return $this->json(
-            //         ['errors' => $errorMessages],
-            //         Response::HTTP_UNPROCESSABLE_ENTITY
-            //     );
-            // }
+           
     
             // 9. Persistance
             $em->persist($affectation);

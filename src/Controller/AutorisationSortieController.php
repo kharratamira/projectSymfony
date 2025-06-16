@@ -43,6 +43,7 @@ final class AutorisationSortieController extends AbstractController
         if (!$technicien) {
             return $this->json(['error' => 'Technicien introuvable'], 404);
         }
+        
      
         $autorisation = new AutorisationSortie();
         $autorisation->setTechnicien($technicien)

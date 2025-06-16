@@ -35,7 +35,6 @@ final class AuthController extends AbstractController
 {
   
     #[Route('/signup', name: 'api_signup', methods: ['POST'])]
-   // #[IsGranted('ROLE_ADMIN')]
     public function AjouterCompte(
         Request $request,
         EntityManagerInterface $entityManager,
@@ -207,7 +206,6 @@ final class AuthController extends AbstractController
 
             ]
         ], 201);
-       // return new JsonResponse(['message' => 'Utilisateur créé avec succès'], 201);
     } catch (\Exception $e) {
         return new JsonResponse(['message' => '', 'details' => $e->getMessage()], 500);
     }

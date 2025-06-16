@@ -18,65 +18,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 #[Route('/api')]
 final class ContratController extends AbstractController{
-//   #[Route('/createContrat/{demandeId}', name: 'create_contrat', methods: ['POST'])]
-// public function create(
-//     int $demandeId,
-//     EntityManagerInterface $em,
-//     DemandeContratRepository $demandeRepo,
-//     ContratRepository $contratRepo,Request $request
-// ): JsonResponse {
-//     $demande = $demandeRepo->find($demandeId);
-//     if (!$demande || $demande->getStatut()->value !== 'accepter') {
-//         return $this->json(['error' => 'Demande invalide'], 400);
-//     }
 
-//     $dateDebut = new \DateTime();
-//     $dateFin = (clone $dateDebut)->modify('+1 year');
-//     $lastContrat = $contratRepo->findOneBy([], ['id' => 'DESC']);
-//      $newNum = str_pad((string) (($lastContrat ? (int) $lastContrat->getNumContrat() : 0) + 1), 3, '0', STR_PAD_LEFT);
-
-//     $contrat = new Contrat();
-//     $contrat->setMontant(450.0);
-//     $contrat->setDateDebut($dateDebut);
-//     $contrat->setDateFin($dateFin);
-//     $contrat->setNumContrat($newNum);
-//     $contrat->setDemandeContrat($demande);
-//     $contrat->setStatutContrat(StatutDemande::EN_ATTENTE);
-//     $contrat->updateVieContrat(); // Ajout ici
-
-//     $demande->setIsGenere(true);
-
-//     $em->persist($contrat);
-
-//     $em->flush();
-
-//     $client = $demande->getClient();
-
-//     return $this->json([
-//         'message' => 'Contrat généré avec succès',
-//         'contrat' => [
-//             'id' => $contrat->getId(),
-//             'num' => $contrat->getNumContrat(),
-//             'dateDebut' => $contrat->getDateDebut()->format('Y-m-d'),
-//             'dateFin' => $contrat->getDateFin()->format('Y-m-d'),
-//             'statut' => $contrat->getStatutContart()->value,
-
-//         ],
-//         'demande' => [
-//             'id' => $demande->getId(),
-//             'description' => $demande->getDescription(),
-//             'statut' => $demande->getStatut()->value,
-//             'isGenere' => $demande->isGenere(),
-//         ],
-//         'client' => [
-//             'id' => $client->getId(),
-//             'nom' => $client->getNom(),
-//             'prenom' => $client->getPrenom(),
-//             'entrepriset' => $client->getEntreprise(),
-//             'adresse' => $client->getAdresse(),
-//         ]
-//     ]);
-// }
 #[Route('/createContrat/{demandeId}', name: 'create_contrat', methods: ['POST'])]
 public function create(
     int $demandeId,

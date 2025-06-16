@@ -200,6 +200,8 @@ public function saveDemande(
                     'adresse'=>$demande->getClient()->getAdresse(),
                     'entreprise'=>$demande->getClient()->getEntreprise(),
                     'email' => $demande->getClient()->getEmail(),
+                    'nom' => $demande->getClient()->getNom(),
+                    'prenom' => $demande->getClient()->getPrenom(),
                 ],
                 'dateDemande' => $demande->getDateDemande()->format('Y-m-d H:i:s'),
                 'actionDate' => $demande->getActionDate()->format('Y-m-d H:i:s'),
